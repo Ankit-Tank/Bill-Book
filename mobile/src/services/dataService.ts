@@ -11,6 +11,8 @@
  * All money amounts are integers in paise.
  */
 
+import { mockDataService } from './mockDataService';
+import { apiDataService } from './apiDataService';
 import {
   Party,
   CreatePartyInput,
@@ -61,9 +63,23 @@ export interface DataService {
   markAlertRead(id: string): Promise<void>;
 
   // --- AI ---
-  extractFromMedia(fileUri: string, mediaType: 'image' | 'audio'): Promise<ExtractionResult>;
+  extractFromMedia(
+    fileUri: string,
+    mediaType: 'image' | 'audio',
+    options?: {
+      onProgress?: (percent: number) => void;
+      signal?: AbortSignal;
+    }
+  ): Promise<ExtractionResult>;
   sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse>;
 
   // Optional AI narration helper for insight cards (Phase 6 / 9)
   narrateReport?(reportType: string, data: Record<string, unknown>): Promise<NarrationResponse>;
 }
+
+// Choose mock or real with EXPO_PUBLIC_USE_MOCK.
+// If EXPO_PUBLIC_USE_MOCK === 'false', use live Flask REST API (apiDataService).
+// Otherwise default to local AsyncStorage mock (mockDataService).
+const useMock = process.env.EXPO_PUBLIC_USE_MOCK !== 'false';
+
+export const dataService: DataService = useMock ? mockDataService : apiDataService;

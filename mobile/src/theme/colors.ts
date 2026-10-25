@@ -40,9 +40,34 @@ export const colors = {
   
   // Alerts & Badges
   info: '#2B6CB0',
+  infoLight: '#E0F2FE',
+  infoText: '#0369A1',
   warning: '#D69E2E',
+  warningLight: '#FEF3C7',
+  warningText: '#B45309',
+  warningBorder: '#FDE68A',
   critical: '#D6001C',
   success: '#0A5C3E',
+  successLight: '#DCFCE7',
+  successSubtle: '#E8F5E9',
+
+  // Status Tints & Containers
+  debitLight: '#FEE2E2',
+  debitSubtle: '#FFF5F5',
+  debitBorder: '#FECACA',
+  creditLight: '#DCFCE7',
+  creditSubtle: '#E8F5E9',
+
+  // Gold & Highlight Cards
+  goldLight: '#FFFDF0',
+  goldBorder: '#FDE68A',
+
+  // Neutrals & Surfaces
+  surfaceMuted: '#F8FAFC',
+  surfaceNeutral: '#F1F5F9',
+  skeleton: '#CBD5E1',
+  shadow: '#000000',
 } as const;
 
 export type ColorToken = keyof typeof colors;
+
