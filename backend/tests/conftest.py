@@ -16,9 +16,18 @@ from backend.app.db import get_db, close_db_pool, execute
 def app():
     """Create Flask test app configured with TestConfig."""
     app = create_app(TestConfig)
+    with app.app_context():
+        views_path = REPO_ROOT / "supabase" / "views.sql"
+        if views_path.exists():
+            views_sql = views_path.read_text()
+            conn = get_db()
+            with conn.cursor() as cur:
+                cur.execute(views_sql)
+            conn.commit()
     yield app
     with app.app_context():
         close_db_pool()
+
 
 
 @pytest.fixture(scope="session")
