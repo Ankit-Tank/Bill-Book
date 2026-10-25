@@ -520,6 +520,9 @@ Day-by-day log of all debit sales and credit collections.
 ### `GET /reports/outstanding`
 All parties who currently owe money (receivables).
 
+**Query Parameters:**
+- `format` (optional): `json` | `csv`
+
 **Response (200 OK):**
 ```json
 {
@@ -540,6 +543,9 @@ All parties who currently owe money (receivables).
 
 ### `GET /reports/payables`
 All parties the shop currently owes money to (suppliers or advance credit).
+
+**Query Parameters:**
+- `format` (optional): `json` | `csv`
 
 **Response (200 OK):**
 ```json
@@ -562,8 +568,9 @@ All parties the shop currently owes money to (suppliers or advance credit).
 Summary of payment recoveries (CR) across a date window.
 
 **Query Parameters:**
-- `start_date`: `YYYY-MM-DD`
-- `end_date`: `YYYY-MM-DD`
+- `start_date` (optional, default: 30 days ago): `YYYY-MM-DD`
+- `end_date` (optional, default: current date): `YYYY-MM-DD`
+- `format` (optional): `json` | `csv`
 
 **Response (200 OK):**
 ```json
@@ -584,6 +591,11 @@ Summary of payment recoveries (CR) across a date window.
 
 ### `GET /reports/weekly`
 Weekly comparison: sales, collections, net balance change, top debtors.
+
+**Query Parameters:**
+- `start_date` (optional, default: 6 days ago): `YYYY-MM-DD`
+- `end_date` (optional, default: current date): `YYYY-MM-DD`
+- `format` (optional): `json` | `csv`
 
 **Response (200 OK):**
 ```json
@@ -608,7 +620,8 @@ Weekly comparison: sales, collections, net balance change, top debtors.
 Monthly overview and trends.
 
 **Query Parameters:**
-- `month` (e.g., `2026-10`)
+- `month` (optional, default: current month `YYYY-MM`): `YYYY-MM`
+- `format` (optional): `json` | `csv`
 
 **Response (200 OK):**
 ```json
