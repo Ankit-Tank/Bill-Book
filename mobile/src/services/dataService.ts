@@ -63,7 +63,14 @@ export interface DataService {
   markAlertRead(id: string): Promise<void>;
 
   // --- AI ---
-  extractFromMedia(fileUri: string, mediaType: 'image' | 'audio'): Promise<ExtractionResult>;
+  extractFromMedia(
+    fileUri: string,
+    mediaType: 'image' | 'audio',
+    options?: {
+      onProgress?: (percent: number) => void;
+      signal?: AbortSignal;
+    }
+  ): Promise<ExtractionResult>;
   sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse>;
 
   // Optional AI narration helper for insight cards (Phase 6 / 9)

@@ -27,6 +27,14 @@ import {
   ChatMessage,
   ChatResponse,
   NarrationResponse,
+  DayBookReport,
+  OutstandingReport,
+  PayablesReport,
+  CollectionReport,
+  CollectionDailyBreakdown,
+  WeeklyReport,
+  MonthlyReport,
+  TopDebtor,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -788,6 +796,8 @@ class MockDataService implements DataService {
 
   // --- Reports (Mock fallback) ---
 
+  // --- Reports (Mock fallback) ---
+
   async getReport(params: ReportParams): Promise<ReportData | string> {
     const parties = await this.listParties();
     const todayStr = getTodayDate();
@@ -799,7 +809,7 @@ class MockDataService implements DataService {
       const total_dr = dayTxs.filter((t) => t.kind === 'DR').reduce((sum, t) => sum + t.amount, 0);
       const total_cr = dayTxs.filter((t) => t.kind === 'CR').reduce((sum, t) => sum + t.amount, 0);
 
-      return {
+      const report: DayBookReport = {
         date: targetDate,
         total_dr,
         total_cr,
@@ -814,22 +824,176 @@ class MockDataService implements DataService {
           created_at: t.created_at,
         })),
       };
+
+      if (params.format === 'csv') {
+        let csv = 'Transaction ID,Date,Party,Type,Amount (Paise),Particulars\n';
+        report.entries.forEach((e) => {
+          csv += `"${e.transaction_id}","${report.date}","${e.party_name}","${e.kind}",${e.amount},"${e.particulars || ''}"\n`;
+        });
+        return csv;
+      }
+      return report;
     }
 
-    // Default to outstanding
-    const receivables = parties.filter((p) => p.balance > 0);
-    return {
-      total_outstanding: receivables.reduce((sum, p) => sum + p.balance, 0),
-      parties_count: receivables.length,
-      parties: receivables.map((p) => ({
-        party_id: p.id,
-        party_name: p.name,
-        phone: p.phone,
-        balance: p.balance,
-        due_days: p.due_days,
-        overdue_days: 0,
-      })),
+    if (params.type === 'outstanding') {
+      const receivables = parties.filter((p) => p.balance > 0);
+      const total_outstanding = receivables.reduce((sum, p) => sum + p.balance, 0);
+      const report: OutstandingReport = {
+        total_outstanding,
+        parties_count: receivables.length,
+        parties: receivables.map((p) => ({
+          party_id: p.id,
+          party_name: p.name,
+          phone: p.phone,
+          balance: p.balance,
+          due_days: p.due_days,
+          overdue_days: Math.max(0, p.due_days - 30),
+        })),
+      };
+
+      if (params.format === 'csv') {
+        let csv = 'Party ID,Party Name,Phone,Balance (Paise),Due Days,Overdue Days\n';
+        report.parties.forEach((p) => {
+          csv += `"${p.party_id}","${p.party_name}","${p.phone || ''}",${p.balance},${p.due_days},${p.overdue_days}\n`;
+        });
+        return csv;
+      }
+      return report;
+    }
+
+    if (params.type === 'payables') {
+      const payables = parties.filter((p) => p.balance < 0 || p.type === 'supplier');
+      const total_payable = payables.reduce((sum, p) => sum + Math.abs(p.balance), 0);
+      const report: PayablesReport = {
+        total_payable,
+        suppliers_count: payables.length,
+        parties: payables.map((p) => ({
+          party_id: p.id,
+          party_name: p.name,
+          phone: p.phone,
+          balance: p.balance,
+          due_days: p.due_days,
+        })),
+      };
+
+      if (params.format === 'csv') {
+        let csv = 'Party ID,Party Name,Phone,Payable Balance (Paise),Due Days\n';
+        report.parties.forEach((p) => {
+          csv += `"${p.party_id}","${p.party_name}","${p.phone || ''}",${Math.abs(p.balance)},${p.due_days}\n`;
+        });
+        return csv;
+      }
+      return report;
+    }
+
+    if (params.type === 'collection') {
+      const startDate = params.start_date || getPastDate(14);
+      const endDate = params.end_date || todayStr;
+      const collections = txs.filter((t) => t.kind === 'CR');
+      const total_collected = collections.reduce((sum, t) => sum + t.amount, 0);
+
+      // Generate 14-day daily breakdown
+      const daily_breakdown: CollectionDailyBreakdown[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = getPastDate(i);
+        const dayTxs = collections.filter((t) => t.txn_date === d);
+        const amt = dayTxs.reduce((sum, t) => sum + t.amount, 0);
+        daily_breakdown.push({
+          date: d,
+          amount: amt || (i % 3 === 0 ? 80000 : i % 2 === 0 ? 120000 : 50000),
+          count: dayTxs.length || 1,
+        });
+      }
+
+      const report: CollectionReport = {
+        start_date: startDate,
+        end_date: endDate,
+        total_collected: total_collected || 3500000,
+        collections_count: collections.length || 28,
+        daily_breakdown,
+      };
+
+      if (params.format === 'csv') {
+        let csv = 'Date,Amount Collected (Paise),Transaction Count\n';
+        report.daily_breakdown.forEach((b) => {
+          csv += `"${b.date}",${b.amount},${b.count}\n`;
+        });
+        return csv;
+      }
+      return report;
+    }
+
+    if (params.type === 'weekly') {
+      const weekStart = params.start_date || getPastDate(6);
+      const weekEnd = params.end_date || todayStr;
+      const top_debtors: TopDebtor[] = parties
+        .filter((p) => p.balance > 0)
+        .sort((a, b) => b.balance - a.balance)
+        .slice(0, 5)
+        .map((p) => ({ party_id: p.id, name: p.name, balance: p.balance }));
+
+      const report: WeeklyReport = {
+        week_start: weekStart,
+        week_end: weekEnd,
+        sales_total: 850000, // ₹8,500
+        collections_total: 620000, // ₹6,200
+        net_change: 230000, // ₹2,300
+        sales_growth_percent: 8.5,
+        top_debtors,
+      };
+
+      if (params.format === 'csv') {
+        let csv = 'Metric,Value\n';
+        csv += `"Week Start","${report.week_start}"\n`;
+        csv += `"Week End","${report.week_end}"\n`;
+        csv += `"Total Sales (Paise)",${report.sales_total}\n`;
+        csv += `"Total Collections (Paise)",${report.collections_total}\n`;
+        csv += `"Net Change (Paise)",${report.net_change}\n`;
+        csv += `"Sales Growth (%)",${report.sales_growth_percent}\n\n`;
+        csv += 'Top Debtor,Balance (Paise)\n';
+        report.top_debtors.forEach((d) => {
+          csv += `"${d.name}",${d.balance}\n`;
+        });
+        return csv;
+      }
+      return report;
+    }
+
+    // Default to monthly
+    const targetMonth = params.month || todayStr.substring(0, 7);
+    const top_debtors: TopDebtor[] = parties
+      .filter((p) => p.balance > 0)
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 5)
+      .map((p) => ({ party_id: p.id, name: p.name, balance: p.balance }));
+
+    const report: MonthlyReport = {
+      month: targetMonth,
+      sales_total: 3500000, // ₹35,000
+      collections_total: 2900000, // ₹29,000
+      net_change: 600000, // ₹6,000
+      previous_month_comparison: {
+        sales_growth_percent: 12.0,
+        collections_growth_percent: 5.4,
+      },
+      top_debtors,
     };
+
+    if (params.format === 'csv') {
+      let csv = 'Metric,Value\n';
+      csv += `"Month","${report.month}"\n`;
+      csv += `"Total Sales (Paise)",${report.sales_total}\n`;
+      csv += `"Total Collections (Paise)",${report.collections_total}\n`;
+      csv += `"Net Change (Paise)",${report.net_change}\n`;
+      csv += `"Sales Growth vs Last Month (%)",${report.previous_month_comparison.sales_growth_percent}\n`;
+      csv += `"Collections Growth vs Last Month (%)",${report.previous_month_comparison.collections_growth_percent}\n\n`;
+      csv += 'Top Debtor,Balance (Paise)\n';
+      report.top_debtors.forEach((d) => {
+        csv += `"${d.name}",${d.balance}\n`;
+      });
+      return csv;
+    }
+    return report;
   }
 
   // --- Alerts ---
@@ -854,30 +1018,204 @@ class MockDataService implements DataService {
     }
   }
 
-  // --- AI (Mock responses) ---
+  // --- AI (5 Real Bills & 5 Voice Clips with Progress & Cancel) ---
 
-  async extractFromMedia(fileUri: string, mediaType: 'image' | 'audio'): Promise<ExtractionResult> {
-    return {
+  private billSampleIndex = 0;
+  private voiceSampleIndex = 0;
+
+  private SAMPLE_BILLS: ExtractionResult[] = [
+    {
       party_name: 'Rahul Sharma',
       party_candidates: [
-        {
-          id: 'p-1',
-          name: 'Rahul Sharma',
-          phone: '+91 98765 43210',
-          score: 0.95,
-        },
+        { id: 'p-1', name: 'Rahul Sharma', phone: '+91 98765 43210', score: 0.96 },
+      ],
+      kind: 'DR',
+      amount: 245000, // ₹2,450
+      txn_date: getTodayDate(),
+      particulars: 'Kiran Grocery: 2x Basmati rice 5kg, 5L Fortune mustard oil',
+      items: [
+        { name: 'Basmati Rice 5kg', quantity: 2, rate: 72500, amount: 145000 },
+        { name: 'Fortune Mustard Oil 5L', quantity: 1, rate: 100000, amount: 100000 },
+      ],
+      confidence: 0.95,
+      needs_review_fields: [],
+    },
+    {
+      party_name: 'Amit Verma',
+      party_candidates: [
+        { id: 'p-3', name: 'Amit Verma', phone: '+91 98234 56789', score: 0.91 },
+      ],
+      kind: 'DR',
+      amount: 480000, // ₹4,800
+      txn_date: getTodayDate(),
+      particulars: 'Wholesale consignment: 2x 25kg Fortune Atta, 10kg Sugar',
+      items: [
+        { name: 'Fortune Chakki Atta 25kg', quantity: 2, rate: 190000, amount: 380000 },
+        { name: 'Refined Sugar 10kg', quantity: 1, rate: 100000, amount: 100000 },
+      ],
+      confidence: 0.88,
+      needs_review_fields: ['particulars'],
+    },
+    {
+      party_name: 'Priya Patel',
+      party_candidates: [
+        { id: 'p-2', name: 'Priya Patel', phone: '+91 98123 45678', score: 0.94 },
+      ],
+      kind: 'DR',
+      amount: 185000, // ₹1,850
+      txn_date: getTodayDate(),
+      particulars: 'Laxmi Dairy: 15L fresh buffalo milk, 2kg desi paneer',
+      items: [
+        { name: 'Buffalo Milk 1L', quantity: 15, rate: 7000, amount: 105000 },
+        { name: 'Fresh Paneer 1kg', quantity: 2, rate: 40000, amount: 80000 },
+      ],
+      confidence: 0.93,
+      needs_review_fields: [],
+    },
+    {
+      party_name: 'Suresh Gupta',
+      party_candidates: [
+        { id: 'p-4', name: 'Suresh Gupta', phone: '+91 98345 67890', score: 0.85 },
+      ],
+      kind: 'DR',
+      amount: 320000, // ₹3,200
+      txn_date: getTodayDate(),
+      particulars: 'Bharat Spares: 5x LED battens 20W, 2x ceiling fan capacitors',
+      items: [
+        { name: 'LED Batten 20W', quantity: 5, rate: 40000, amount: 200000 },
+        { name: 'Fan Capacitor', quantity: 2, rate: 60000, amount: 120000 },
+      ],
+      confidence: 0.79,
+      needs_review_fields: ['amount', 'party_name'],
+    },
+    {
+      party_name: 'Kisan Wholesale Traders',
+      party_candidates: [
+        { id: 'p-5', name: 'Kisan Wholesale Traders', phone: '+91 98456 78901', score: 0.98 },
+      ],
+      kind: 'CR',
+      amount: 1500000, // ₹15,000
+      txn_date: getTodayDate(),
+      particulars: 'UPI payment to supplier against invoice #8091',
+      items: [
+        { name: 'Organic Fertilizer Bag', quantity: 10, rate: 100000, amount: 1000000 },
+        { name: 'Hybrid Seeds Pack', quantity: 5, rate: 100000, amount: 500000 },
+      ],
+      confidence: 0.96,
+      needs_review_fields: [],
+    },
+  ];
+
+  private SAMPLE_VOICES: ExtractionResult[] = [
+    {
+      party_name: 'Rahul Sharma',
+      party_candidates: [
+        { id: 'p-1', name: 'Rahul Sharma', phone: '+91 98765 43210', score: 0.95 },
       ],
       kind: 'DR',
       amount: 250000, // ₹2,500
       txn_date: getTodayDate(),
-      particulars: 'Extracted: 2 bags basmati rice, 5L mustard oil',
+      particulars: 'Voice: Rahul Sharma ko 2 bori chawal aur 5 litre tel diya',
       items: [
-        { name: 'Basmati Rice 10kg', quantity: 2, rate: 100000, amount: 200000 },
-        { name: 'Mustard Oil 5L', quantity: 1, rate: 50000, amount: 50000 },
+        { name: 'Chawal 10kg', quantity: 2, rate: 100000, amount: 200000 },
+        { name: 'Tel 5L', quantity: 1, rate: 50000, amount: 50000 },
       ],
       confidence: 0.94,
       needs_review_fields: [],
-    };
+    },
+    {
+      party_name: 'Priya Patel',
+      party_candidates: [
+        { id: 'p-2', name: 'Priya Patel', phone: '+91 98123 45678', score: 0.96 },
+      ],
+      kind: 'CR',
+      amount: 100000, // ₹1,000
+      txn_date: getTodayDate(),
+      particulars: 'Voice: Priya Patel ne cash jama karwaya',
+      items: [],
+      confidence: 0.97,
+      needs_review_fields: [],
+    },
+    {
+      party_name: 'Suresh Gupta',
+      party_candidates: [
+        { id: 'p-4', name: 'Suresh Gupta', phone: '+91 98345 67890', score: 0.88 },
+      ],
+      kind: 'DR',
+      amount: 450000, // ₹4,500
+      txn_date: getTodayDate(),
+      particulars: 'Voice: Suresh Gupta kal ka udhar 4500 add karo',
+      items: [],
+      confidence: 0.86,
+      needs_review_fields: ['party_name'],
+    },
+    {
+      party_name: 'Amit Verma',
+      party_candidates: [
+        { id: 'p-3', name: 'Amit Verma', phone: '+91 98234 56789', score: 0.93 },
+      ],
+      kind: 'CR',
+      amount: 300000, // ₹3,000
+      txn_date: getTodayDate(),
+      particulars: 'Voice: Amit Verma Google Pay se 3000 prapt hua',
+      items: [],
+      confidence: 0.95,
+      needs_review_fields: [],
+    },
+    {
+      party_name: 'Kisan Wholesale Traders',
+      party_candidates: [
+        { id: 'p-5', name: 'Kisan Wholesale Traders', phone: '+91 98456 78901', score: 0.95 },
+      ],
+      kind: 'CR',
+      amount: 1000000, // ₹10,000
+      txn_date: getTodayDate(),
+      particulars: 'Voice: Kisan Wholesale ko 10000 cheque payment kiya',
+      items: [],
+      confidence: 0.91,
+      needs_review_fields: [],
+    },
+  ];
+
+  async extractFromMedia(
+    fileUri: string,
+    mediaType: 'image' | 'audio',
+    options?: {
+      onProgress?: (percent: number) => void;
+      signal?: AbortSignal;
+    }
+  ): Promise<ExtractionResult> {
+    if (options?.signal?.aborted) {
+      throw new Error('Upload cancelled by user');
+    }
+
+    // Step 1: 25%
+    options?.onProgress?.(25);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    if (options?.signal?.aborted) throw new Error('Upload cancelled by user');
+
+    // Step 2: 50%
+    options?.onProgress?.(50);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (options?.signal?.aborted) throw new Error('Upload cancelled by user');
+
+    // Step 3: 75%
+    options?.onProgress?.(75);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (options?.signal?.aborted) throw new Error('Upload cancelled by user');
+
+    // Step 4: 100%
+    options?.onProgress?.(100);
+
+    if (mediaType === 'audio') {
+      const result = this.SAMPLE_VOICES[this.voiceSampleIndex % this.SAMPLE_VOICES.length];
+      this.voiceSampleIndex++;
+      return { ...result, txn_date: getTodayDate() };
+    }
+
+    const result = this.SAMPLE_BILLS[this.billSampleIndex % this.SAMPLE_BILLS.length];
+    this.billSampleIndex++;
+    return { ...result, txn_date: getTodayDate() };
   }
 
   async sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse> {

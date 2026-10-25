@@ -291,26 +291,73 @@ class ApiDataService implements DataService {
 
   // --- AI (Phase 3 / 6) ---
 
-  async extractFromMedia(fileUri: string, mediaType: 'image' | 'audio'): Promise<ExtractionResult> {
+  async extractFromMedia(
+    fileUri: string,
+    mediaType: 'image' | 'audio',
+    options?: {
+      onProgress?: (percent: number) => void;
+      signal?: AbortSignal;
+    }
+  ): Promise<ExtractionResult> {
+    if (options?.signal?.aborted) {
+      throw new ApiClientError('Upload cancelled by user', 'CANCELLED', 0);
+    }
+
+    // Interval to simulate progressive upload/processing feedback
+    let progressTimer: any = null;
+    let currentPct = 10;
+    if (options?.onProgress) {
+      options.onProgress(currentPct);
+      progressTimer = setInterval(() => {
+        if (currentPct < 90) {
+          currentPct += Math.min(25, 90 - currentPct);
+          options.onProgress?.(currentPct);
+        }
+      }, 350);
+    }
+
     try {
       const formData = new FormData();
       const filename = fileUri.split('/').pop() || (mediaType === 'image' ? 'bill.jpg' : 'voice.m4a');
       const mimeType = mediaType === 'image' ? 'image/jpeg' : 'audio/m4a';
 
-      // React Native FormData file object
-      formData.append('file', {
+      let filePayload: any = {
         uri: fileUri,
         name: filename,
         type: mimeType,
-      } as any);
+      };
+
+      // Handle web blob / data URI conversion
+      if (typeof window !== 'undefined' && (fileUri.startsWith('blob:') || fileUri.startsWith('data:'))) {
+        try {
+          const blobResp = await fetch(fileUri);
+          const blob = await blobResp.blob();
+          filePayload = new File([blob], filename, { type: mimeType });
+        } catch {
+          // Keep object format
+        }
+      }
+
+      formData.append('file', filePayload);
       formData.append('media_type', mediaType);
 
-      return await apiClient.post<ExtractionResult>('/ai/extract', formData);
-    } catch (err) {
+      const res = await apiClient.post<ExtractionResult>('/ai/extract', formData, {
+        signal: options?.signal,
+      });
+
+      if (progressTimer) clearInterval(progressTimer);
+      options?.onProgress?.(100);
+      return res;
+    } catch (err: any) {
+      if (progressTimer) clearInterval(progressTimer);
+
+      if (options?.signal?.aborted || err?.name === 'AbortError' || err?.code === 'CANCELLED') {
+        throw new ApiClientError('Upload cancelled by user', 'CANCELLED', 0);
+      }
       if (err instanceof ApiClientError) {
         throw err;
       }
-      return mockDataService.extractFromMedia(fileUri, mediaType);
+      return mockDataService.extractFromMedia(fileUri, mediaType, options);
     }
   }
 

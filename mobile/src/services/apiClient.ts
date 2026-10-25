@@ -57,6 +57,14 @@ class ApiClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+    if (options.signal) {
+      if (options.signal.aborted) {
+        controller.abort();
+      } else {
+        options.signal.addEventListener('abort', () => controller.abort());
+      }
+    }
+
     try {
       const response = await fetch(url, {
         ...options,
@@ -120,10 +128,11 @@ class ApiClient {
     return this.request<T>(url, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, body?: any): Promise<T> {
+  async post<T>(endpoint: string, body?: any, requestOptions?: RequestInit): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+      ...requestOptions,
     });
   }
 
