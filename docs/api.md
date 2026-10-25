@@ -396,6 +396,9 @@ GET /api/v1/dashboard/summary HTTP/1.1
 ### `POST /ai/extract`
 Send an uploaded bill photo or voice audio clip to extract structured transaction data.
 
+> [!NOTE]
+> **Audio Format Compatibility:** The Expo mobile app records voice notes in `.m4a` format (AAC in MP4 container). Google Gemini multimodal API accepts `audio/mp4` and `audio/aac`. On the backend, uploaded `.m4a` files are automatically normalized to `audio/mp4` (or transcoded to 16kHz mono WAV via `ffmpeg` if installed) ensuring seamless end-to-end compatibility.
+
 **Request:**
 ```http
 POST /api/v1/ai/extract HTTP/1.1
