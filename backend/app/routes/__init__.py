@@ -6,6 +6,7 @@ from .dashboard import dashboard_bp
 from .ai import ai_bp
 from .credit import credit_bp
 from .reports import reports_bp
+from .alerts import alerts_bp
 
 
 def register_routes(app: Flask) -> None:
@@ -17,5 +18,7 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(ai_bp, url_prefix="/api/v1")
     app.register_blueprint(credit_bp, url_prefix="/api/v1")
     app.register_blueprint(reports_bp, url_prefix="/api/v1")
+    app.register_blueprint(alerts_bp, url_prefix="/api/v1")
+
 
 

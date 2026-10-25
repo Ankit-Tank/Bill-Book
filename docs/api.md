@@ -38,6 +38,8 @@ Common Error Codes:
 - `TRANSACTION_NOT_FOUND`: Transaction ID does not exist
 - `ALERT_NOT_FOUND`: Alert ID does not exist
 - `EXTRACTION_FAILED`: Media could not be parsed by AI
+- `RATE_LIMIT_EXCEEDED`: Exceeded request rate limit (e.g. 30 req/min on AI routes)
+- `PAYLOAD_TOO_LARGE`: File or payload exceeds upload limit (16MB global, 10MB media)
 - `INTERNAL_ERROR`: Unexpected server error
 
 ---
@@ -724,11 +726,24 @@ Content-Type: application/json
 
 ## 10. Alerts Engine
 
+Rule-based alerts system evaluating business risks and operational anomalies without requiring AI. Evaluated on transaction creation hooks and via daily scheduled cron jobs.
+
+### Supported Alert Rules (`kind`):
+1. `overdue`: Unpaid DR transaction past the party's configured `due_days` (severity: `warning` or `critical` if overdue ≥ 30 days).
+2. `credit_limit_exceeded`: Active customer whose outstanding balance exceeds their `credit_limit` (severity: `warning` or `critical` if balance ≥ 1.5x limit).
+3. `duplicate_bill`: Two active transactions recorded for the same party with identical amount within 24 hours, or sharing the exact same `bill_image_path`.
+4. `unusual_amount`: Transaction amount exceeding 3x the party's historical median amount (requires minimum 5 historical transactions).
+5. `repeat_late_payer`: Customer with repeated payment settlement delays (average FIFO payment delay ≥ 10 days with multiple payments).
+
+Each alert is assigned a deterministic `dedupe_key` to guarantee idempotency and avoid duplicate notifications.
+
+---
+
 ### `GET /alerts`
-List business alerts (overdue payments, credit limit exceeded, duplicate bills, unusual amounts).
+List business alerts, ordered newest first, with an unread badge counter.
 
 **Query Parameters:**
-- `unread_only` (optional, default: `false`): `true` | `false`
+- `unread_only` (optional, boolean, default: `false`): When `true` or `1`, filters only unacknowledged alerts (`read_at IS NULL`).
 
 **Request:**
 ```http
@@ -741,22 +756,35 @@ GET /api/v1/alerts?unread_only=true HTTP/1.1
   "alerts": [
     {
       "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-      "party_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "party_name": "Rahul Sharma",
-      "kind": "credit_limit_exceeded",
-      "message": "Rahul Sharma has exceeded their credit limit of ₹50,000.",
+      "party_id": "f47ac10b-58cc-4372-a567-0e02b2c3d471",
+      "party_name": "Ramesh Kumar",
+      "kind": "overdue",
+      "message": "Ramesh Kumar has overdue payment of ₹1,200 (18 days past due date).",
       "severity": "warning",
-      "dedupe_key": "limit_exceeded_f47ac10b_20261025",
+      "dedupe_key": "overdue_f47ac10b-58cc-4372-a567-0e02b2c3d471_2026-10-25",
+      "created_at": "2026-10-25T08:00:00Z",
+      "read_at": null
+    },
+    {
+      "id": "e3a890d1-6789-4fa2-bf45-31a89c3db112",
+      "party_id": "f47ac10b-58cc-4372-a567-0e02b2c3d472",
+      "party_name": "Kavita Verma",
+      "kind": "credit_limit_exceeded",
+      "message": "Kavita Verma has exceeded their credit limit of ₹5,000 (current balance: ₹8,500).",
+      "severity": "critical",
+      "dedupe_key": "limit_exceeded_f47ac10b-58cc-4372-a567-0e02b2c3d472_2026-10-25",
       "created_at": "2026-10-25T08:00:00Z",
       "read_at": null
     }
   ],
-  "unread_count": 1
+  "unread_count": 2
 }
 ```
 
+---
+
 ### `POST /alerts/:id/read`
-Mark a single alert as read.
+Acknowledge an alert and mark it as read.
 
 **Request:**
 ```http
@@ -771,8 +799,21 @@ POST /api/v1/alerts/9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d/read HTTP/1.1
 }
 ```
 
+**Error Responses:**
+- `404 Not Found`:
+  ```json
+  {
+    "error": {
+      "code": "ALERT_NOT_FOUND",
+      "message": "Alert with ID 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d was not found."
+    }
+  }
+  ```
+
+---
+
 ### `POST /alerts/run`
-Trigger manual background evaluation of alert rules across parties and transactions.
+Trigger an immediate evaluation pass of all 5 alert rules across parties and transactions.
 
 **Request:**
 ```http
@@ -782,8 +823,9 @@ POST /api/v1/alerts/run HTTP/1.1
 **Response (200 OK):**
 ```json
 {
-  "triggered_count": 1,
+  "triggered_count": 5,
   "evaluated_rules": 5,
   "timestamp": "2026-10-25T12:21:00Z"
 }
 ```
+
