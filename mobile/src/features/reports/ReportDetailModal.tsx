@@ -26,6 +26,7 @@ import {
   MonthlyReport,
 } from '../../types';
 import { exportAndShareCSV } from './csvExport';
+import { AiInsightCard } from '../assistant';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -243,6 +244,15 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
             </View>
           ) : (
             <ScrollView contentContainerStyle={styles.scrollContent}>
+              {/* AI Insight Card (narrates report metrics; fails quietly) */}
+              {reportData && (
+                <AiInsightCard
+                  reportType={reportType}
+                  title="KhataAI Report Summary"
+                  data={reportData as Record<string, unknown>}
+                />
+              )}
+
               {/* Day Book Report */}
               {reportType === 'day-book' && reportData ? (
                 <RenderDayBook
