@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Platform, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader, Card, PrimaryButton } from '../../src/components';
 import { colors } from '../../src/theme/colors';
@@ -7,6 +8,7 @@ import { mockDataService } from '../../src/services/mockDataService';
 import { apiClient } from '../../src/services/apiClient';
 
 export default function MoreScreen() {
+  const router = useRouter();
   const [resetting, setResetting] = useState(false);
   const [checkingHealth, setCheckingHealth] = useState(false);
 
@@ -105,7 +107,11 @@ export default function MoreScreen() {
         <Text style={styles.sectionTitle}>Advanced Modules</Text>
 
         <View style={styles.menuGroup}>
-          <View style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/assistant')}
+            activeOpacity={0.7}
+          >
             <View style={styles.menuIconCircle}>
               <Ionicons name="chatbubbles" size={20} color={colors.primaryGreen} />
             </View>
@@ -113,23 +119,27 @@ export default function MoreScreen() {
               <Text style={styles.menuTitle}>KhataAI Copilot</Text>
               <Text style={styles.menuSub}>Voice & Hindi query assistant</Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Phase 6</Text>
+            <View style={[styles.badge, { backgroundColor: '#DCFCE7' }]}>
+              <Text style={[styles.badgeText, { color: colors.primaryGreen }]}>Open</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/alerts')}
+            activeOpacity={0.7}
+          >
             <View style={styles.menuIconCircle}>
               <Ionicons name="notifications" size={20} color={colors.goldFab} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Overdue & Risk Alerts</Text>
-              <Text style={styles.menuSub}>Automated payment reminders</Text>
+              <Text style={styles.menuSub}>Payment reminders & risk radar</Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Phase 8</Text>
+            <View style={[styles.badge, { backgroundColor: '#FEF3C7' }]}>
+              <Text style={[styles.badgeText, { color: '#D97706' }]}>Open</Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.menuItem}>
             <View style={styles.menuIconCircle}>

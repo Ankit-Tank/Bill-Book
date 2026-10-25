@@ -16,6 +16,7 @@ import { CreditReport } from '../../types';
 import { AmountText } from '../../components/AmountText';
 import { Card } from '../../components/Card';
 import { formatDate } from '../../utils/format';
+import { AiInsightCard } from '../assistant';
 
 export interface CreditReportModalProps {
   partyId: string | null;
@@ -126,6 +127,20 @@ export const CreditReportModal: React.FC<CreditReportModalProps> = ({
                   </Text>
                 </View>
               </View>
+
+              {/* AI Insight Card (narrates customer risk profile; fails quietly) */}
+              <AiInsightCard
+                reportType="credit-report"
+                title="KhataAI Risk Assessment"
+                data={{
+                  party_name: report.party_name,
+                  credit_limit: report.credit_limit,
+                  total_outstanding: report.total_outstanding,
+                  limit_usage_percent: report.limit_usage_percent,
+                  avg_payment_delay_days: report.avg_payment_delay_days,
+                  risk_level: report.risk_level,
+                }}
+              />
 
               {/* Outstanding & Credit Limit Card */}
               <Card variant="default" style={styles.sectionCard}>

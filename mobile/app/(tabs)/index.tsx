@@ -20,6 +20,8 @@ import {
   ErrorBanner,
 } from '../../src/components';
 import { WelcomeModal } from '../../src/features/onboarding/WelcomeModal';
+import { AlertsBellBadge } from '../../src/features/alerts';
+import { AiInsightCard } from '../../src/features/assistant';
 import { colors } from '../../src/theme/colors';
 import { dataService } from '../../src/services/dataService';
 import { DashboardSummary, Transaction } from '../../src/types';
@@ -79,11 +81,7 @@ export default function DashboardScreen() {
       <AppHeader
         title="BillBook"
         subtitle="Digital Khata & Credit Ledger"
-        rightAction={{
-          icon: 'refresh',
-          onPress: onRefresh,
-          accessibilityLabel: 'Refresh data',
-        }}
+        rightElement={<AlertsBellBadge onPress={() => router.push('/alerts')} />}
       />
 
       <ScrollView
@@ -107,6 +105,43 @@ export default function DashboardScreen() {
             <Ionicons name="information-circle-outline" size={16} color={colors.primaryGreen} />
           </TouchableOpacity>
         </View>
+
+        {/* KhataAI Copilot Quick Banner */}
+        <TouchableOpacity
+          style={styles.aiCopilotBanner}
+          onPress={() => router.push('/assistant')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.aiIconBubble}>
+            <Ionicons name="sparkles" size={18} color={colors.primaryGreen} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.aiBannerTitle}>Ask KhataAI Copilot</Text>
+              <View style={styles.aiPill}>
+                <Text style={styles.aiPillText}>Voice & Hindi</Text>
+              </View>
+            </View>
+            <Text style={styles.aiBannerSub} numberOfLines={1}>
+              {'e.g. "Who owes the most?" or "Aaj ka collection kitna hua?"'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.primaryGreen} />
+        </TouchableOpacity>
+
+        {/* AI Insight Card (narrates dashboard metrics; fails quietly) */}
+        {summary ? (
+          <AiInsightCard
+            reportType="dashboard"
+            data={{
+              total_receivable: summary.total_receivable,
+              total_payable: summary.total_payable,
+              net_balance: summary.net_balance,
+              today_sales: summary.today_dr,
+              today_collections: summary.today_cr,
+            }}
+          />
+        ) : null}
 
         {/* Error Banner when network fails or API is down */}
         {error ? (
@@ -566,5 +601,45 @@ const styles = StyleSheet.create({
   },
   txAmountCol: {
     alignItems: 'flex-end',
+  },
+  aiCopilotBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BFE7DA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    gap: 10,
+  },
+  aiIconBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DCFCE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.darkGreenText,
+  },
+  aiPill: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  aiPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primaryGreen,
+  },
+  aiBannerSub: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
 });
