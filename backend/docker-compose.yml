@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://billbook_user:billbook_pass@db:5432/billbook
+      - API_KEY=billbook-secret-dev-key
+      - FLASK_ENV=development
+      - PORT=5000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=billbook_user
+      - POSTGRES_PASSWORD=billbook_pass
+      - POSTGRES_DB=billbook
+    ports:
+      # Mapped to 5433 on host to avoid port collisions with host PostgreSQL
+      - "5433:5432"
+    volumes:
+      - ../supabase/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ../supabase/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billbook_user -d billbook"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  db_data:

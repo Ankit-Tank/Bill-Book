@@ -1,0 +1,358 @@
+{
+  "info": {
+    "_postman_id": "9b1deb4d-3b7d-4bad-9bdd-billbook0001",
+    "name": "BillBook REST API",
+    "description": "Postman collection for BillBook Flask API Phase 2 Foundation matching docs/api.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "billbook-secret-dev-key",
+      "type": "string"
+    },
+    {
+      "key": "party_id",
+      "value": "f47ac10b-58cc-4372-a567-0e02b2c3d471",
+      "type": "string"
+    },
+    {
+      "key": "txn_id",
+      "value": "e7b0e1a8-8b9a-4e2a-bb34-8c01d9f8e401",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Health Check (Direct)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check (/api/v1/health)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Parties",
+      "item": [
+        {
+          "name": "List Parties (Active)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parties?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["parties"],
+              "query": [
+                { "key": "status", "value": "active" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Parties (Filter Customers)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parties?type=customer&status=active",
+              "host": ["{{base_url}}"],
+              "path": ["parties"],
+              "query": [
+                { "key": "type", "value": "customer" },
+                { "key": "status", "value": "active" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Parties",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parties?search=Rahul",
+              "host": ["{{base_url}}"],
+              "path": ["parties"],
+              "query": [
+                { "key": "search", "value": "Rahul" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Party",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Suresh Retailer\",\n  \"phone\": \"+919877001122\",\n  \"type\": \"customer\",\n  \"opening_balance\": 0,\n  \"credit_limit\": 3000000,\n  \"due_days\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/parties",
+              "host": ["{{base_url}}"],
+              "path": ["parties"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Party by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parties/{{party_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["parties", "{{party_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch Party",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"credit_limit\": 7500000,\n  \"due_days\": 45\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/parties/{{party_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["parties", "{{party_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Archive Party",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parties/{{party_id}}/archive",
+              "host": ["{{base_url}}"],
+              "path": ["parties", "{{party_id}}", "archive"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Party",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/parties/{{party_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["parties", "{{party_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["transactions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Transactions by Party",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions?party_id={{party_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["transactions"],
+              "query": [
+                { "key": "party_id", "value": "{{party_id}}" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transaction (DR Credit Sale)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"party_id\": \"{{party_id}}\",\n  \"kind\": \"DR\",\n  \"amount\": 250000,\n  \"particulars\": \"2 bags basmati rice, 5L mustard oil\",\n  \"source\": \"manual\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["transactions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transaction (CR Payment Received)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"party_id\": \"{{party_id}}\",\n  \"kind\": \"CR\",\n  \"amount\": 100000,\n  \"particulars\": \"Google Pay settlement\",\n  \"source\": \"manual\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["transactions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Patch Transaction",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 260000,\n  \"particulars\": \"2 bags basmati rice + 1 packet salt\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/transactions/{{txn_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["transactions", "{{txn_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Soft Delete Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/transactions/{{txn_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["transactions", "{{txn_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "X-API-Key", "value": "{{api_key}}" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/dashboard/summary",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "summary"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
