@@ -410,14 +410,14 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   },
 ];
 
-// Seed Alerts
+// Seed Alerts (5 realistic alert scenarios matching seed_demo.py)
 const INITIAL_ALERTS: Alert[] = [
   {
     id: 'al-1',
     party_id: 'p-2',
     party_name: 'Priya Verma',
     kind: 'overdue',
-    message: 'Priya Verma has an overdue balance of ₹3,200 past due days (15 days).',
+    message: 'Priya Verma has an overdue balance of ₹3,200 past due days (15 days overdue).',
     severity: 'warning',
     dedupe_key: 'overdue_p2',
     created_at: new Date(Date.now() - 3600000).toISOString(),
@@ -425,12 +425,45 @@ const INITIAL_ALERTS: Alert[] = [
   },
   {
     id: 'al-2',
+    party_id: 'p-3',
+    party_name: 'Kavita Verma',
+    kind: 'credit_limit_exceeded',
+    message: 'Kavita Verma: Outstanding balance ₹8,500 exceeds credit limit of ₹5,000.',
+    severity: 'critical',
+    dedupe_key: 'limit_kavita',
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+    read_at: null,
+  },
+  {
+    id: 'al-3',
+    party_id: 'p-1',
+    party_name: 'Suresh Traders',
+    kind: 'duplicate_bill',
+    message: 'Potential duplicate entry: Two identical ₹2,500 transactions recorded within 4 hours.',
+    severity: 'warning',
+    dedupe_key: 'dupe_suresh_2500',
+    created_at: new Date(Date.now() - 14400000).toISOString(),
+    read_at: null,
+  },
+  {
+    id: 'al-4',
+    party_id: 'p-5',
+    party_name: 'Anand Dairy',
+    kind: 'unusual_amount',
+    message: 'Unusual amount detected: ₹3,000 transaction is 3.5x higher than 30-day median.',
+    severity: 'info',
+    dedupe_key: 'spike_anand_3000',
+    created_at: new Date(Date.now() - 28800000).toISOString(),
+    read_at: null,
+  },
+  {
+    id: 'al-5',
     party_id: 'p-1',
     party_name: 'Rahul Sharma',
     kind: 'repeat_late_payer',
-    message: 'Rahul Sharma usually clears invoices 4 days past agreed terms.',
-    severity: 'info',
-    dedupe_key: 'late_p1',
+    message: 'Rahul Sharma: 3 consecutive payments settled 12+ days past agreed 7-day terms.',
+    severity: 'warning',
+    dedupe_key: 'late_rahul',
     created_at: new Date(Date.now() - 86400000).toISOString(),
     read_at: null,
   },
@@ -1219,13 +1252,190 @@ class MockDataService implements DataService {
   }
 
   async sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse> {
+    const q = message.toLowerCase().trim();
+
+    // 1. Off-topic check
+    if (
+      q.includes('weather') ||
+      q.includes('mausam') ||
+      q.includes('recipe') ||
+      q.includes('khana') ||
+      q.includes('joke') ||
+      q.includes('poem') ||
+      q.includes('code') ||
+      q.includes('cricket')
+    ) {
+      const isHindi = q.includes('mausam') || q.includes('khana');
+      return {
+        reply: isHindi
+          ? 'मैं KhataAI हूँ और केवल आपकी दुकान के हिसाब-किताब, ग्राहकों के बकाए और वित्तीय रिपोर्ट में मदद कर सकता हूँ। कृपया दुकान से जुड़ा प्रश्न पूछें।'
+          : 'I am KhataAI, your shop assistant. I can only help with customer accounts, balances, transactions, and store summaries. Please ask an accounting-related question.',
+        tool_calls: [],
+      };
+    }
+
+    // 2. Who owes me the most / Sabse zyada baki
+    if (
+      q.includes('who owes') ||
+      q.includes('most') ||
+      q.includes('sabse zyada') ||
+      q.includes('sabse jyada') ||
+      q.includes('top debtor') ||
+      q.includes('debtor')
+    ) {
+      return {
+        reply:
+          'Based on your ledger records, Priya Verma owes you the most with an outstanding balance of ₹3,200, followed by Amit Patel (₹3,000) and Rahul Sharma (₹1,500).',
+        tool_calls: [
+          {
+            name: 'list_top_debtors',
+            arguments: { limit: 3 },
+            result: [
+              { name: 'Priya Verma', balance: 320000 },
+              { name: 'Amit Patel', balance: 300000 },
+              { name: 'Rahul Sharma', balance: 150000 },
+            ],
+          },
+        ],
+      };
+    }
+
+    // 3. Weekly / Sales performance
+    if (
+      q.includes('week') ||
+      q.includes('sales') ||
+      q.includes('hafte') ||
+      q.includes('bikri') ||
+      q.includes('kamai')
+    ) {
+      return {
+        reply:
+          "This week's sales stand at ₹8,400 with ₹4,500 collected from customers. Net change in store credit is +₹3,900 with healthy turnover across 6 active orders.",
+        tool_calls: [
+          {
+            name: 'get_period_summary',
+            arguments: { period: 'weekly' },
+            result: { sales_total: 840000, collections_total: 450000, net_change: 390000 },
+          },
+        ],
+      };
+    }
+
+    // 4. Overdue / Late payments
+    if (
+      q.includes('overdue') ||
+      q.includes('late') ||
+      q.includes('due') ||
+      q.includes('baki') ||
+      q.includes('tarikh')
+    ) {
+      return {
+        reply:
+          'You currently have 1 overdue customer: Priya Verma has an overdue balance of ₹3,200 that is 15 days past her agreed payment term. Rahul Sharma also has ₹1,500 pending.',
+        tool_calls: [
+          {
+            name: 'list_overdue_parties',
+            arguments: { min_days_overdue: 1 },
+            result: [{ name: 'Priya Verma', balance: 320000, days_overdue: 15 }],
+          },
+        ],
+      };
+    }
+
+    // 5. Party specific balance queries
+    if (q.includes('rahul')) {
+      return {
+        reply:
+          'Rahul Sharma has a current balance of ₹1,500 (receivable). Total credit taken: ₹3,500, payments settled: ₹2,000. Credit limit is ₹50,000.',
+        tool_calls: [
+          {
+            name: 'get_party_balance',
+            arguments: { party_name: 'Rahul Sharma' },
+            result: { name: 'Rahul Sharma', balance: 150000, balance_type: 'receivable' },
+          },
+        ],
+      };
+    }
+
+    if (q.includes('priya')) {
+      return {
+        reply:
+          'Priya Verma has a balance of ₹3,200 (receivable). Her account is flagged for 15 days overdue past her 15-day credit period.',
+        tool_calls: [
+          {
+            name: 'get_party_balance',
+            arguments: { party_name: 'Priya Verma' },
+            result: { name: 'Priya Verma', balance: 320000, balance_type: 'receivable' },
+          },
+        ],
+      };
+    }
+
+    if (q.includes('amit')) {
+      return {
+        reply:
+          'Amit Patel has an outstanding balance of ₹3,000 (receivable) with an opening balance of ₹500 and credit limit of ₹1,00,000.',
+        tool_calls: [
+          {
+            name: 'get_party_balance',
+            arguments: { party_name: 'Amit Patel' },
+            result: { name: 'Amit Patel', balance: 300000, balance_type: 'receivable' },
+          },
+        ],
+      };
+    }
+
+    if (q.includes('kisan')) {
+      return {
+        reply:
+          'Kisan Wholesale Traders has a payable balance of ₹12,000 (supplier credit you owe to them).',
+        tool_calls: [
+          {
+            name: 'get_party_balance',
+            arguments: { party_name: 'Kisan Wholesale Traders' },
+            result: { name: 'Kisan Wholesale Traders', balance: -1200000, balance_type: 'payable' },
+          },
+        ],
+      };
+    }
+
+    if (q.includes('balaji')) {
+      return {
+        reply:
+          'Balaji Provisions has a payable balance of ₹8,000 (supplier balance).',
+        tool_calls: [
+          {
+            name: 'get_party_balance',
+            arguments: { party_name: 'Balaji Provisions' },
+            result: { name: 'Balaji Provisions', balance: -800000, balance_type: 'payable' },
+          },
+        ],
+      };
+    }
+
+    if (q.includes('sunita')) {
+      return {
+        reply:
+          'Sunita Gupta has ₹0 balance. All prior bills totaling ₹1,800 have been fully settled via PhonePe.',
+        tool_calls: [
+          {
+            name: 'get_party_balance',
+            arguments: { party_name: 'Sunita Gupta' },
+            result: { name: 'Sunita Gupta', balance: 0, balance_type: 'settled' },
+          },
+        ],
+      };
+    }
+
+    // Default: Overall Dashboard Summary
     return {
-      reply: `Based on your Khata ledger records: Your current total receivable is ₹7,700 and total payable is ₹20,000. Rahul Sharma has ₹1,500 outstanding.`,
+      reply:
+        'Your shop summary: Total customer receivables are ₹7,700 across 3 active debtors. Total payable to suppliers is ₹20,000. Today you recorded ₹1,500 in new credit sales.',
       tool_calls: [
         {
           name: 'get_dashboard_summary',
           arguments: {},
-          result: { total_receivable: 770000, total_payable: 2000000 },
+          result: { total_receivable: 770000, total_payable: 2000000, today_dr: 150000 },
         },
       ],
     };
