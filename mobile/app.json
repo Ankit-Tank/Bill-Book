@@ -7,6 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "billbook",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A5C3E"
+    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0A5C3E",
