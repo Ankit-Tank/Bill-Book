@@ -3,6 +3,7 @@ from .health import health_bp
 from .parties import parties_bp
 from .transactions import transactions_bp
 from .dashboard import dashboard_bp
+from .ai import ai_bp
 
 
 def register_routes(app: Flask) -> None:
@@ -11,3 +12,5 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(parties_bp, url_prefix="/api/v1")
     app.register_blueprint(transactions_bp, url_prefix="/api/v1")
     app.register_blueprint(dashboard_bp, url_prefix="/api/v1")
+    app.register_blueprint(ai_bp, url_prefix="/api/v1")
+
