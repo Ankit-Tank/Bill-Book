@@ -46,6 +46,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<any>(null);
+  const [loadedReportType, setLoadedReportType] = useState<ReportType | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
@@ -58,6 +59,8 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
     setIsLoading(true);
     setError(null);
     setExportNotice(null);
+    setReportData(null);
+    setLoadedReportType(null);
 
     try {
       let data: any = null;
@@ -75,6 +78,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
         data = await dataService.getReport({ type: 'monthly' });
       }
       setReportData(data);
+      setLoadedReportType(reportType);
     } catch (err: any) {
       setError(err?.message || 'Failed to generate report statement.');
     } finally {
@@ -85,33 +89,38 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
   useEffect(() => {
     let isCancelled = false;
     if (visible && reportType) {
-      const timer = setTimeout(() => {
-        setIsLoading(true);
-        setError(null);
-        dataService
-          .getReport({
-            type: reportType,
-            format: 'json',
-            date: reportType === 'day-book' ? dayBookDate : undefined,
-          })
-          .then((data) => {
-            if (!isCancelled) {
-              setReportData(data);
-              setIsLoading(false);
-            }
-          })
-          .catch((err: any) => {
-            if (!isCancelled) {
-              setError(err?.message || 'Failed to generate report statement.');
-              setIsLoading(false);
-            }
-          });
-      }, 0);
+      setIsLoading(true);
+      setError(null);
+      setReportData(null);
+      setLoadedReportType(null);
+
+      dataService
+        .getReport({
+          type: reportType,
+          format: 'json',
+          date: reportType === 'day-book' ? dayBookDate : undefined,
+        })
+        .then((data) => {
+          if (!isCancelled) {
+            setReportData(data);
+            setLoadedReportType(reportType);
+            setIsLoading(false);
+          }
+        })
+        .catch((err: any) => {
+          if (!isCancelled) {
+            setError(err?.message || 'Failed to generate report statement.');
+            setIsLoading(false);
+          }
+        });
 
       return () => {
         isCancelled = true;
-        clearTimeout(timer);
       };
+    } else {
+      setReportData(null);
+      setLoadedReportType(null);
+      setError(null);
     }
   }, [visible, reportType, dayBookDate]);
 
@@ -242,19 +251,17 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
             <View style={{ padding: 16 }}>
               <ErrorBanner message={error} onRetry={fetchReport} />
             </View>
-          ) : (
+          ) : (reportData && loadedReportType === reportType) ? (
             <ScrollView contentContainerStyle={styles.scrollContent}>
               {/* AI Insight Card (narrates report metrics; fails quietly) */}
-              {reportData && (
-                <AiInsightCard
-                  reportType={reportType}
-                  title="KhataAI Report Summary"
-                  data={reportData as Record<string, unknown>}
-                />
-              )}
+              <AiInsightCard
+                reportType={reportType}
+                title="KhataAI Report Summary"
+                data={reportData as Record<string, unknown>}
+              />
 
               {/* Day Book Report */}
-              {reportType === 'day-book' && reportData ? (
+              {reportType === 'day-book' ? (
                 <RenderDayBook
                   data={reportData as DayBookReport}
                   selectedDate={dayBookDate}
@@ -263,7 +270,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
               ) : null}
 
               {/* Outstanding Report */}
-              {reportType === 'outstanding' && reportData ? (
+              {reportType === 'outstanding' ? (
                 <RenderOutstanding
                   data={reportData as OutstandingReport}
                   onSelectParty={onSelectParty}
@@ -272,7 +279,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
               ) : null}
 
               {/* Payables Report */}
-              {reportType === 'payables' && reportData ? (
+              {reportType === 'payables' ? (
                 <RenderPayables
                   data={reportData as PayablesReport}
                   onSelectParty={onSelectParty}
@@ -281,7 +288,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
               ) : null}
 
               {/* Collection Report */}
-              {reportType === 'collection' && reportData ? (
+              {reportType === 'collection' ? (
                 <RenderCollection
                   data={reportData as CollectionReport}
                   chartWidth={chartWidth}
@@ -289,7 +296,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
               ) : null}
 
               {/* Weekly Report */}
-              {reportType === 'weekly' && reportData ? (
+              {reportType === 'weekly' ? (
                 <RenderWeekly
                   data={reportData as WeeklyReport}
                   chartWidth={chartWidth}
@@ -299,7 +306,7 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
               ) : null}
 
               {/* Monthly Report */}
-              {reportType === 'monthly' && reportData ? (
+              {reportType === 'monthly' ? (
                 <RenderMonthly
                   data={reportData as MonthlyReport}
                   chartWidth={chartWidth}
@@ -308,6 +315,11 @@ export const ReportDetailModal: React.FC<ReportDetailModalProps> = ({
                 />
               ) : null}
             </ScrollView>
+          ) : (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primaryGreen} />
+              <Text style={styles.loadingText}>Generating statement...</Text>
+            </View>
           )}
         </View>
       </View>
@@ -379,47 +391,54 @@ const RenderDayBook: React.FC<{
       </View>
 
       {/* Entries List */}
-      <Text style={styles.sectionHeading}>Daily Entries ({data.entries.length})</Text>
-      {data.entries.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>No transactions recorded on this date.</Text>
-        </View>
-      ) : (
-        <View style={styles.table}>
-          {data.entries.map((entry) => (
-            <View key={entry.transaction_id} style={styles.entryRow}>
-              <View
-                style={[
-                  styles.entryBadge,
-                  { backgroundColor: entry.kind === 'DR' ? colors.debitLight : colors.creditLight },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.entryBadgeText,
-                    { color: entry.kind === 'DR' ? colors.debit : colors.credit },
-                  ]}
-                >
-                  {entry.kind}
-                </Text>
+      {(() => {
+        const entries = Array.isArray(data?.entries) ? data.entries : [];
+        return (
+          <>
+            <Text style={styles.sectionHeading}>Daily Entries ({entries.length})</Text>
+            {entries.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No transactions recorded on this date.</Text>
               </View>
+            ) : (
+              <View style={styles.table}>
+                {entries.map((entry) => (
+                  <View key={entry.transaction_id} style={styles.entryRow}>
+                    <View
+                      style={[
+                        styles.entryBadge,
+                        { backgroundColor: entry.kind === 'DR' ? colors.debitLight : colors.creditLight },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.entryBadgeText,
+                          { color: entry.kind === 'DR' ? colors.debit : colors.credit },
+                        ]}
+                      >
+                        {entry.kind}
+                      </Text>
+                    </View>
 
-              <View style={{ flex: 1, marginHorizontal: 8 }}>
-                <Text style={styles.entryParty}>{entry.party_name}</Text>
-                <Text style={styles.entryParticulars} numberOfLines={1}>
-                  {entry.particulars || 'No particulars'}
-                </Text>
+                    <View style={{ flex: 1, marginHorizontal: 8 }}>
+                      <Text style={styles.entryParty}>{entry.party_name}</Text>
+                      <Text style={styles.entryParticulars} numberOfLines={1}>
+                        {entry.particulars || 'No particulars'}
+                      </Text>
+                    </View>
+
+                    <AmountText
+                      amount={entry.amount}
+                      kind={entry.kind}
+                      size="sm"
+                    />
+                  </View>
+                ))}
               </View>
-
-              <AmountText
-                amount={entry.amount}
-                kind={entry.kind}
-                size="sm"
-              />
-            </View>
-          ))}
-        </View>
-      )}
+            )}
+          </>
+        );
+      })()}
     </View>
   );
 };
@@ -430,44 +449,52 @@ const RenderOutstanding: React.FC<{
   onSelectParty?: (partyId: string) => void;
   onClose: () => void;
 }> = ({ data, onSelectParty, onClose }) => {
+  const partiesList = Array.isArray(data?.parties) ? data.parties : [];
+
   return (
     <View>
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { flex: 2, backgroundColor: colors.debitSubtle }]}>
           <Text style={styles.kpiLabel}>Total Outstanding Receivables</Text>
-          <AmountText amount={data.total_outstanding} kind="DR" size="lg" />
+          <AmountText amount={data?.total_outstanding || 0} kind="DR" size="lg" />
         </View>
 
         <View style={[styles.kpiCard, { flex: 1 }]}>
           <Text style={styles.kpiLabel}>Parties</Text>
-          <Text style={styles.kpiCount}>{data.parties_count}</Text>
+          <Text style={styles.kpiCount}>{data?.parties_count ?? partiesList.length}</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionHeading}>Debtor Accounts ({data.parties.length})</Text>
-      <View style={styles.table}>
-        {data.parties.map((p) => (
-          <TouchableOpacity
-            key={p.party_id}
-            style={styles.partyRow}
-            activeOpacity={0.7}
-            onPress={() => {
-              if (onSelectParty) {
-                onClose();
-                onSelectParty(p.party_id);
-              }
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.partyRowName}>{p.party_name}</Text>
-              <Text style={styles.partyRowSub}>
-                Due Days: {p.due_days} {p.overdue_days > 0 ? `• Overdue: ${p.overdue_days}d` : '• Safe'}
-              </Text>
-            </View>
-            <AmountText amount={p.balance} kind="DR" size="sm" />
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.sectionHeading}>Debtor Accounts ({partiesList.length})</Text>
+      {partiesList.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No outstanding dues found.</Text>
+        </View>
+      ) : (
+        <View style={styles.table}>
+          {partiesList.map((p) => (
+            <TouchableOpacity
+              key={p.party_id}
+              style={styles.partyRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (onSelectParty) {
+                  onClose();
+                  onSelectParty(p.party_id);
+                }
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.partyRowName}>{p.party_name}</Text>
+                <Text style={styles.partyRowSub}>
+                  Due Days: {p.due_days} {p.overdue_days > 0 ? `• Overdue: ${p.overdue_days}d` : '• Safe'}
+                </Text>
+              </View>
+              <AmountText amount={p.balance} kind="DR" size="sm" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -478,42 +505,50 @@ const RenderPayables: React.FC<{
   onSelectParty?: (partyId: string) => void;
   onClose: () => void;
 }> = ({ data, onSelectParty, onClose }) => {
+  const partiesList = Array.isArray(data?.parties) ? data.parties : [];
+
   return (
     <View>
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { flex: 2, backgroundColor: colors.creditSubtle }]}>
           <Text style={styles.kpiLabel}>Total Supplier Payables</Text>
-          <AmountText amount={data.total_payable} kind="CR" size="lg" />
+          <AmountText amount={data?.total_payable || 0} kind="CR" size="lg" />
         </View>
 
         <View style={[styles.kpiCard, { flex: 1 }]}>
           <Text style={styles.kpiLabel}>Vendors</Text>
-          <Text style={styles.kpiCount}>{data.suppliers_count}</Text>
+          <Text style={styles.kpiCount}>{data?.suppliers_count ?? partiesList.length}</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionHeading}>Wholesale Vendors ({data.parties.length})</Text>
-      <View style={styles.table}>
-        {data.parties.map((p) => (
-          <TouchableOpacity
-            key={p.party_id}
-            style={styles.partyRow}
-            activeOpacity={0.7}
-            onPress={() => {
-              if (onSelectParty) {
-                onClose();
-                onSelectParty(p.party_id);
-              }
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.partyRowName}>{p.party_name}</Text>
-              <Text style={styles.partyRowSub}>Credit Term: {p.due_days} days</Text>
-            </View>
-            <AmountText amount={Math.abs(p.balance)} kind="CR" size="sm" />
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.sectionHeading}>Wholesale Vendors ({partiesList.length})</Text>
+      {partiesList.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No pending payables recorded.</Text>
+        </View>
+      ) : (
+        <View style={styles.table}>
+          {partiesList.map((p) => (
+            <TouchableOpacity
+              key={p.party_id}
+              style={styles.partyRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (onSelectParty) {
+                  onClose();
+                  onSelectParty(p.party_id);
+                }
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.partyRowName}>{p.party_name}</Text>
+                <Text style={styles.partyRowSub}>Credit Term: {p.due_days} days</Text>
+              </View>
+              <AmountText amount={Math.abs(p.balance)} kind="CR" size="sm" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -523,14 +558,16 @@ const RenderCollection: React.FC<{
   data: CollectionReport;
   chartWidth: number;
 }> = ({ data, chartWidth }) => {
+  const dailyBreakdown = Array.isArray(data?.daily_breakdown) ? data.daily_breakdown : [];
+
   // Format data for GiftedCharts BarChart
-  const barData = data.daily_breakdown.slice(-7).map((b) => ({
-    value: Math.round(b.amount / 100000), // in thousands
-    label: b.date.slice(5),
+  const barData = dailyBreakdown.slice(-7).map((b) => ({
+    value: Math.round((b.amount || 0) / 100000), // in thousands
+    label: (b.date || '').slice(5),
     frontColor: colors.primaryGreen,
     topLabelComponent: () => (
       <Text style={{ fontSize: 9, color: colors.textSecondary, marginBottom: 2 }}>
-        ₹{Math.round(b.amount / 100000)}k
+        ₹{Math.round((b.amount || 0) / 100000)}k
       </Text>
     ),
   }));
@@ -540,11 +577,11 @@ const RenderCollection: React.FC<{
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { flex: 2, backgroundColor: colors.creditSubtle }]}>
           <Text style={styles.kpiLabel}>Total Recoveries Collected</Text>
-          <AmountText amount={data.total_collected} kind="CR" size="lg" />
+          <AmountText amount={data?.total_collected || 0} kind="CR" size="lg" />
         </View>
         <View style={[styles.kpiCard, { flex: 1 }]}>
           <Text style={styles.kpiLabel}>Receipts</Text>
-          <Text style={styles.kpiCount}>{data.collections_count}</Text>
+          <Text style={styles.kpiCount}>{data?.collections_count ?? dailyBreakdown.length}</Text>
         </View>
       </View>
 
@@ -552,35 +589,45 @@ const RenderCollection: React.FC<{
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Daily Recovery Trend (₹ in Thousands)</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <BarChart
-            data={barData}
-            width={chartWidth}
-            height={160}
-            barWidth={26}
-            spacing={18}
-            roundedTop
-            roundedBottom
-            hideRules
-            yAxisThickness={0}
-            xAxisThickness={1}
-            xAxisColor={colors.border}
-            yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-            xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
-            noOfSections={4}
-          />
+          {barData.length > 0 ? (
+            <BarChart
+              data={barData}
+              width={chartWidth}
+              height={160}
+              barWidth={26}
+              spacing={18}
+              roundedTop
+              roundedBottom
+              hideRules
+              yAxisThickness={0}
+              xAxisThickness={1}
+              xAxisColor={colors.border}
+              yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
+              xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+              noOfSections={4}
+            />
+          ) : (
+            <Text style={[styles.emptyText, { padding: 16 }]}>No recent collection trend data.</Text>
+          )}
         </ScrollView>
       </View>
 
       <Text style={styles.sectionHeading}>Daily Breakdown Table</Text>
-      <View style={styles.table}>
-        {data.daily_breakdown.map((row) => (
-          <View key={row.date} style={styles.breakdownRow}>
-            <Text style={styles.breakdownDate}>{row.date}</Text>
-            <Text style={styles.breakdownCount}>{row.count} payments</Text>
-            <AmountText amount={row.amount} kind="CR" size="sm" />
-          </View>
-        ))}
-      </View>
+      {dailyBreakdown.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No recovery logs found for this period.</Text>
+        </View>
+      ) : (
+        <View style={styles.table}>
+          {dailyBreakdown.map((row) => (
+            <View key={row.date} style={styles.breakdownRow}>
+              <Text style={styles.breakdownDate}>{row.date}</Text>
+              <Text style={styles.breakdownCount}>{row.count} payments</Text>
+              <AmountText amount={row.amount} kind="CR" size="sm" />
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -594,35 +641,37 @@ const RenderWeekly: React.FC<{
 }> = ({ data, chartWidth, onSelectParty, onClose }) => {
   const comparisonData = [
     {
-      value: Math.round(data.sales_total / 100000),
+      value: Math.round((data?.sales_total || 0) / 100000),
       label: 'Sales (DR)',
       frontColor: colors.debit,
     },
     {
-      value: Math.round(data.collections_total / 100000),
+      value: Math.round((data?.collections_total || 0) / 100000),
       label: 'Recoveries (CR)',
       frontColor: colors.primaryGreen,
     },
   ];
+
+  const topDebtors = Array.isArray(data?.top_debtors) ? data.top_debtors : [];
 
   return (
     <View>
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { flex: 1, borderColor: colors.debitBorder }]}>
           <Text style={styles.kpiLabel}>Weekly Sales (DR)</Text>
-          <AmountText amount={data.sales_total} kind="DR" size="md" />
+          <AmountText amount={data?.sales_total || 0} kind="DR" size="md" />
         </View>
 
         <View style={[styles.kpiCard, { flex: 1, borderColor: colors.borderLight }]}>
           <Text style={styles.kpiLabel}>Weekly Recoveries (CR)</Text>
-          <AmountText amount={data.collections_total} kind="CR" size="md" />
+          <AmountText amount={data?.collections_total || 0} kind="CR" size="md" />
         </View>
       </View>
 
       <View style={styles.growthBadge}>
         <Ionicons name="trending-up" size={16} color={colors.primaryGreen} />
         <Text style={styles.growthBadgeText}>
-          Sales Growth: +{data.sales_growth_percent}% compared to previous week
+          Sales Growth: +{data?.sales_growth_percent || 0}% compared to previous week
         </Text>
       </View>
 
@@ -647,25 +696,31 @@ const RenderWeekly: React.FC<{
       </View>
 
       <Text style={styles.sectionHeading}>Top 5 Debtors</Text>
-      <View style={styles.table}>
-        {data.top_debtors.map((d, index) => (
-          <TouchableOpacity
-            key={d.party_id}
-            style={styles.partyRow}
-            activeOpacity={0.7}
-            onPress={() => {
-              if (onSelectParty) {
-                onClose();
-                onSelectParty(d.party_id);
-              }
-            }}
-          >
-            <Text style={styles.rankNum}>{index + 1}.</Text>
-            <Text style={[styles.partyRowName, { flex: 1 }]}>{d.name}</Text>
-            <AmountText amount={d.balance} kind="DR" size="sm" />
-          </TouchableOpacity>
-        ))}
-      </View>
+      {topDebtors.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No debtor records found for this period.</Text>
+        </View>
+      ) : (
+        <View style={styles.table}>
+          {topDebtors.map((d, index) => (
+            <TouchableOpacity
+              key={d.party_id}
+              style={styles.partyRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (onSelectParty) {
+                  onClose();
+                  onSelectParty(d.party_id);
+                }
+              }}
+            >
+              <Text style={styles.rankNum}>{index + 1}.</Text>
+              <Text style={[styles.partyRowName, { flex: 1 }]}>{d.name}</Text>
+              <AmountText amount={d.balance} kind="DR" size="sm" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -679,35 +734,41 @@ const RenderMonthly: React.FC<{
 }> = ({ data, chartWidth, onSelectParty, onClose }) => {
   const comparisonData = [
     {
-      value: Math.round(data.sales_total / 100000),
+      value: Math.round((data?.sales_total || 0) / 100000),
       label: 'Monthly Sales',
       frontColor: colors.debit,
     },
     {
-      value: Math.round(data.collections_total / 100000),
+      value: Math.round((data?.collections_total || 0) / 100000),
       label: 'Collections',
       frontColor: colors.primaryGreen,
     },
   ];
+
+  const topDebtors = Array.isArray(data?.top_debtors) ? data.top_debtors : [];
+  const prevComparison = data?.previous_month_comparison || {
+    sales_growth_percent: 0,
+    collections_growth_percent: 0,
+  };
 
   return (
     <View>
       <View style={styles.kpiRow}>
         <View style={[styles.kpiCard, { flex: 1, borderColor: colors.debitBorder }]}>
           <Text style={styles.kpiLabel}>Month Sales</Text>
-          <AmountText amount={data.sales_total} kind="DR" size="md" />
+          <AmountText amount={data?.sales_total || 0} kind="DR" size="md" />
         </View>
 
         <View style={[styles.kpiCard, { flex: 1, borderColor: colors.borderLight }]}>
           <Text style={styles.kpiLabel}>Month Recoveries</Text>
-          <AmountText amount={data.collections_total} kind="CR" size="md" />
+          <AmountText amount={data?.collections_total || 0} kind="CR" size="md" />
         </View>
       </View>
 
       <View style={styles.growthBadge}>
         <Ionicons name="stats-chart" size={16} color={colors.primaryGreen} />
         <Text style={styles.growthBadgeText}>
-          MoM Sales Growth: +{data.previous_month_comparison.sales_growth_percent}% • Collections: +{data.previous_month_comparison.collections_growth_percent}%
+          MoM Sales Growth: +{prevComparison.sales_growth_percent}% • Collections: +{prevComparison.collections_growth_percent}%
         </Text>
       </View>
 
@@ -732,25 +793,31 @@ const RenderMonthly: React.FC<{
       </View>
 
       <Text style={styles.sectionHeading}>Top Outstanding Debtors</Text>
-      <View style={styles.table}>
-        {data.top_debtors.map((d, index) => (
-          <TouchableOpacity
-            key={d.party_id}
-            style={styles.partyRow}
-            activeOpacity={0.7}
-            onPress={() => {
-              if (onSelectParty) {
-                onClose();
-                onSelectParty(d.party_id);
-              }
-            }}
-          >
-            <Text style={styles.rankNum}>{index + 1}.</Text>
-            <Text style={[styles.partyRowName, { flex: 1 }]}>{d.name}</Text>
-            <AmountText amount={d.balance} kind="DR" size="sm" />
-          </TouchableOpacity>
-        ))}
-      </View>
+      {topDebtors.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>No debtor records found for this month.</Text>
+        </View>
+      ) : (
+        <View style={styles.table}>
+          {topDebtors.map((d, index) => (
+            <TouchableOpacity
+              key={d.party_id}
+              style={styles.partyRow}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (onSelectParty) {
+                  onClose();
+                  onSelectParty(d.party_id);
+                }
+              }}
+            >
+              <Text style={styles.rankNum}>{index + 1}.</Text>
+              <Text style={[styles.partyRowName, { flex: 1 }]}>{d.name}</Text>
+              <AmountText amount={d.balance} kind="DR" size="sm" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
