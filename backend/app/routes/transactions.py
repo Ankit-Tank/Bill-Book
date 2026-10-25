@@ -133,7 +133,17 @@ def create_transaction():
     )
     txn_id = row["id"]
     txn = get_transaction_by_id(txn_id)
+
+    # Post-creation alert rule evaluation hook
+    try:
+        from ..services.alerts import evaluate_alerts_for_transaction
+        evaluate_alerts_for_transaction(party_id_str, txn)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Alert evaluation hook failed: %s", e)
+
     return jsonify(txn), 201
+
 
 
 @transactions_bp.route("/transactions/<txn_id>", methods=["PATCH"])
