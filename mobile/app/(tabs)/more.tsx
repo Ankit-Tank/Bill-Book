@@ -1,5 +1,17 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Platform, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Platform,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  TouchableWithoutFeedback,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader, Card, PrimaryButton } from '../../src/components';
@@ -7,12 +19,77 @@ import { colors } from '../../src/theme/colors';
 import { mockDataService } from '../../src/services/mockDataService';
 import { apiClient } from '../../src/services/apiClient';
 
+const SHOP_PROFILE_KEY = '@billbook_shop_profile';
+
 export default function MoreScreen() {
   const router = useRouter();
   const [resetting, setResetting] = useState(false);
   const [checkingHealth, setCheckingHealth] = useState(false);
 
+  // Shop Profile state
+  const [shopName, setShopName] = useState('Gupta Kirana Store');
+  const [shopAddress, setShopAddress] = useState('Sector 14, Gurugram, Haryana');
+  const [shopPhone, setShopPhone] = useState('+91 98765 43210');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [inputName, setInputName] = useState('');
+  const [inputAddress, setInputAddress] = useState('');
+  const [inputPhone, setInputPhone] = useState('');
+
   const isLiveApi = process.env.EXPO_PUBLIC_USE_MOCK === 'false';
+
+  // Load shop profile from storage
+  useEffect(() => {
+    let isMounted = true;
+    AsyncStorage.getItem(SHOP_PROFILE_KEY)
+      .then((saved) => {
+        if (saved && isMounted) {
+          try {
+            const data = JSON.parse(saved);
+            if (data.name) setShopName(data.name);
+            if (data.address) setShopAddress(data.address);
+            if (data.phone) setShopPhone(data.phone);
+          } catch {
+            // Ignored
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const openEditProfile = () => {
+    setInputName(shopName);
+    setInputAddress(shopAddress);
+    setInputPhone(shopPhone);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    const trimmedName = inputName.trim() || 'Gupta Kirana Store';
+    const trimmedAddr = inputAddress.trim() || 'Sector 14, Gurugram, Haryana';
+    const trimmedPhone = inputPhone.trim() || '+91 98765 43210';
+
+    setShopName(trimmedName);
+    setShopAddress(trimmedAddr);
+    setShopPhone(trimmedPhone);
+    setEditModalVisible(false);
+
+    try {
+      await AsyncStorage.setItem(
+        SHOP_PROFILE_KEY,
+        JSON.stringify({
+          name: trimmedName,
+          address: trimmedAddr,
+          phone: trimmedPhone,
+        })
+      );
+    } catch {
+      // Ignored
+    }
+  };
 
   const handleTestHealth = async () => {
     setCheckingHealth(true);
@@ -72,14 +149,27 @@ export default function MoreScreen() {
               <Ionicons name="storefront" size={26} color={colors.primaryGreen} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.shopName}>Gupta Kirana Store</Text>
-              <Text style={styles.shopDetails}>Demo Merchant • Sector 14, Gurugram</Text>
+              <View style={styles.nameRow}>
+                <Text style={styles.shopName}>{shopName}</Text>
+                <TouchableOpacity onPress={openEditProfile} style={styles.editBtn}>
+                  <Ionicons name="pencil" size={14} color={colors.primaryGreen} />
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.shopDetails}>{shopAddress}</Text>
+              <Text style={styles.shopPhone}>{shopPhone}</Text>
               <View style={styles.demoTag}>
                 <Text style={styles.demoTagText}>
                   {isLiveApi ? 'PHASE 4: LIVE SUPABASE API' : 'OFFLINE MOCK MODE'}
                 </Text>
               </View>
             </View>
+          </View>
+          <View style={styles.profileFooter}>
+            <Ionicons name="document-text-outline" size={13} color={colors.textMuted} />
+            <Text style={styles.profileFooterText}>
+              Printed on exported ledger statements and customer receipts
+            </Text>
           </View>
         </Card>
 
@@ -147,13 +237,56 @@ export default function MoreScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Live Supabase Sync</Text>
-              <Text style={styles.menuSub}>Active on branch phase-4/live-data-ledger</Text>
+              <Text style={styles.menuSub}>Connected to PostgreSQL party_balances view</Text>
             </View>
             <View style={[styles.badge, { backgroundColor: colors.creditLight }]}>
               <Text style={[styles.badgeText, { color: colors.credit }]}>Ready</Text>
             </View>
           </View>
         </View>
+
+        {/* About BillBook Section */}
+        <Text style={styles.sectionTitle}>About BillBook</Text>
+        <Card variant="default" style={styles.aboutCard}>
+          <View style={styles.aboutHeader}>
+            <View style={styles.aboutLogo}>
+              <Ionicons name="book" size={24} color={colors.primaryGreen} />
+            </View>
+            <View>
+              <Text style={styles.aboutAppName}>BillBook</Text>
+              <Text style={styles.aboutVersion}>Version 1.0.0 (Release Candidate)</Text>
+            </View>
+          </View>
+
+          <Text style={styles.aboutDesc}>
+            Smart digital Khata and credit ledger app designed for local Indian merchants.
+            Replaces physical paper bahi-khatas with AI multimodal bill extraction, voice
+            transaction recording, conversational ledger queries, automated credit risk scoring,
+            and proactive payment overdue alerts.
+          </Text>
+
+          <View style={styles.divider} />
+
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>Architecture</Text>
+            <Text style={styles.aboutValue}>Expo React Native + Flask + Supabase + Gemini</Text>
+          </View>
+
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>Money Rules</Text>
+            <Text style={styles.aboutValue}>Strict Integer Paise (Zero Float Drift)</Text>
+          </View>
+
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>Team</Text>
+            <Text style={styles.aboutValue}>Team Thunderbytes (Avnish, Krishna, Ankit)</Text>
+          </View>
+
+          <View style={styles.aboutRow}>
+            <Text style={styles.aboutLabel}>License</Text>
+            <Text style={styles.aboutValue}>MIT License</Text>
+          </View>
+        </Card>
 
         {/* Demo Management */}
         <Text style={styles.sectionTitle}>Mentor Demo Tools</Text>
@@ -172,6 +305,71 @@ export default function MoreScreen() {
           />
         </Card>
       </ScrollView>
+
+      {/* Edit Shop Profile Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setEditModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Edit Shop Profile</Text>
+                  <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                    <Ionicons name="close" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.fieldLabel}>Shop Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={inputName}
+                  onChangeText={setInputName}
+                  placeholder="e.g. Gupta Kirana Store"
+                  placeholderTextColor={colors.textMuted}
+                />
+
+                <Text style={styles.fieldLabel}>Shop Address</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={inputAddress}
+                  onChangeText={setInputAddress}
+                  placeholder="e.g. Sector 14, Gurugram"
+                  placeholderTextColor={colors.textMuted}
+                />
+
+                <Text style={styles.fieldLabel}>Contact Phone / GSTIN</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={inputPhone}
+                  onChangeText={setInputPhone}
+                  placeholder="e.g. +91 98765 43210"
+                  placeholderTextColor={colors.textMuted}
+                />
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => setEditModalVisible(false)}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={handleSaveProfile}
+                  >
+                    <Text style={styles.saveBtnText}>Save Profile</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -203,16 +401,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
   shopName: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 2,
+    flex: 1,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: colors.creditLight,
+    borderRadius: 6,
+  },
+  editBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primaryGreen,
   },
   shopDetails: {
     fontSize: 12,
     color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  shopPhone: {
+    fontSize: 12,
+    color: colors.textSecondary,
     marginBottom: 6,
+    fontWeight: '500',
   },
   demoTag: {
     alignSelf: 'flex-start',
@@ -225,6 +449,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.primaryGreen,
+  },
+  profileFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  profileFooterText: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 15,
@@ -308,6 +547,63 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textMuted,
   },
+  aboutCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  aboutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  aboutLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.creditLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  aboutAppName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primaryGreen,
+  },
+  aboutVersion: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  aboutDesc: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 19,
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: 12,
+  },
+  aboutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  aboutLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  aboutValue: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    maxWidth: '65%',
+    textAlign: 'right',
+  },
   demoCard: {
     padding: 16,
     borderRadius: 16,
@@ -322,5 +618,82 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     lineHeight: 17,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.textPrimary,
+    backgroundColor: colors.surfaceNeutral,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: colors.primaryGreen,
+    alignItems: 'center',
+  },
+  saveBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.surface,
   },
 });
