@@ -11,6 +11,7 @@
  * All money amounts are integers in paise.
  */
 
+import { mockDataService } from './mockDataService';
 import {
   Party,
   CreatePartyInput,
@@ -67,3 +68,7 @@ export interface DataService {
   // Optional AI narration helper for insight cards (Phase 6 / 9)
   narrateReport?(reportType: string, data: Record<string, unknown>): Promise<NarrationResponse>;
 }
+
+// In Phase 1: Defaults to mockDataService.
+// In Phase 4: Switches to apiDataService when EXPO_PUBLIC_USE_MOCK === 'false'.
+export const dataService: DataService = mockDataService;
