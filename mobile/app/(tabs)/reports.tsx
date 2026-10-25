@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.creditLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   badge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceNeutral,
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,

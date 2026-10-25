@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader, PrimaryButton, Card, AmountText } from '../../src/components';
+import { AppHeader, PrimaryButton, Card, AmountText, ErrorBanner } from '../../src/components';
 import { colors } from '../../src/theme/colors';
 import { dataService } from '../../src/services/dataService';
 import { Party, TransactionKind, CreateTransactionInput } from '../../src/types';
@@ -30,21 +30,27 @@ export default function NewTransactionScreen() {
   const [txnDate, setTxnDate] = useState(new Date().toISOString().split('T')[0]);
   const [submitting, setSubmitting] = useState(false);
   const [showPartyPicker, setShowPartyPicker] = useState(!params.partyId);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadParties() {
-      try {
-        const list = await dataService.listParties({ status: 'active' });
-        setParties(list);
-        if (!selectedPartyId && list.length > 0 && !params.partyId) {
-          // If none pre-selected, leave unselected to encourage picking or default to first
+    let isMounted = true;
+    dataService
+      .listParties({ status: 'active' })
+      .then((list) => {
+        if (isMounted) {
+          setParties(list);
         }
-      } catch (e) {
-        console.error('Failed to load parties for transaction:', e);
-      }
-    }
-    loadParties();
-  }, [selectedPartyId, params.partyId]);
+      })
+      .catch((e) => {
+        if (isMounted) {
+          setError(e?.message || 'Failed to load parties.');
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const selectedParty = parties.find((p) => p.id === selectedPartyId);
 
@@ -113,6 +119,13 @@ export default function NewTransactionScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          {error ? (
+            <ErrorBanner
+              message={error}
+              onDismiss={() => setError(null)}
+            />
+          ) : null}
+
           {/* DR / CR Toggle Bar */}
           <Text style={styles.sectionLabel}>Transaction Type</Text>
           <View style={styles.toggleContainer}>
@@ -407,7 +420,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.creditLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -430,7 +443,7 @@ const styles = StyleSheet.create({
   changePartyBtn: {
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceNeutral,
     borderRadius: 8,
   },
   changePartyText: {

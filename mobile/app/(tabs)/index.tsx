@@ -6,11 +6,20 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader, Card, AmountText, EmptyState, PrimaryButton } from '../../src/components';
+import {
+  AppHeader,
+  Card,
+  AmountText,
+  EmptyState,
+  PrimaryButton,
+  CardSkeleton,
+  ListItemSkeleton,
+  ErrorBanner,
+} from '../../src/components';
+import { WelcomeModal } from '../../src/features/onboarding/WelcomeModal';
 import { colors } from '../../src/theme/colors';
 import { dataService } from '../../src/services/dataService';
 import { DashboardSummary, Transaction } from '../../src/types';
@@ -21,13 +30,16 @@ export default function DashboardScreen() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [welcomeVisible, setWelcomeVisible] = useState(false);
 
   const fetchSummary = useCallback(async () => {
     try {
+      setError(null);
       const data = await dataService.getDashboardSummary();
       setSummary(data);
-    } catch (err) {
-      console.error('Error fetching dashboard summary:', err);
+    } catch (err: any) {
+      setError(err?.message || 'Could not connect to live ledger server.');
     }
   }, []);
 
@@ -38,12 +50,13 @@ export default function DashboardScreen() {
       .then((data) => {
         if (isMounted) {
           setSummary(data);
+          setError(null);
           setLoading(false);
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         if (isMounted) {
-          console.error('Error fetching dashboard summary:', err);
+          setError(err?.message || 'Failed to connect to ledger server.');
           setLoading(false);
         }
       });
@@ -58,6 +71,8 @@ export default function DashboardScreen() {
     await fetchSummary();
     setRefreshing(false);
   }, [fetchSummary]);
+
+  const isLiveApi = process.env.EXPO_PUBLIC_USE_MOCK === 'false';
 
   return (
     <View style={styles.container}>
@@ -82,10 +97,37 @@ export default function DashboardScreen() {
           />
         }
       >
+        {/* Environment Status Badge */}
+        <View style={styles.envBar}>
+          <View style={[styles.dot, { backgroundColor: isLiveApi ? colors.credit : colors.goldFab }]} />
+          <Text style={styles.envText}>
+            {isLiveApi ? 'Live API Mode (Supabase Postgres)' : 'Offline Mock Mode (AsyncStorage)'}
+          </Text>
+          <TouchableOpacity onPress={() => setWelcomeVisible(true)}>
+            <Ionicons name="information-circle-outline" size={16} color={colors.primaryGreen} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Error Banner when network fails or API is down */}
+        {error ? (
+          <ErrorBanner
+            message={error}
+            onRetry={onRefresh}
+            onDismiss={() => setError(null)}
+          />
+        ) : null}
+
+        {/* Loading Skeletons */}
         {loading && !summary ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primaryGreen} />
-            <Text style={styles.loadingText}>Loading ledger summary...</Text>
+          <View style={styles.skeletonContainer}>
+            <CardSkeleton />
+            <View style={styles.twoColumnRow}>
+              <View style={styles.skeletonHalf} />
+              <View style={styles.skeletonHalf} />
+            </View>
+            <ListItemSkeleton />
+            <ListItemSkeleton />
+            <ListItemSkeleton />
           </View>
         ) : (
           <>
@@ -227,7 +269,7 @@ export default function DashboardScreen() {
                   <View
                     style={[
                       styles.txIconCircle,
-                      { backgroundColor: tx.kind === 'DR' ? '#FEE2E2' : '#DCFCE7' },
+                      { backgroundColor: tx.kind === 'DR' ? colors.debitLight : colors.creditLight },
                     ]}
                   >
                     <Ionicons
@@ -274,6 +316,12 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Welcome Onboarding Modal */}
+      <WelcomeModal
+        visible={welcomeVisible}
+        onClose={() => setWelcomeVisible(false)}
+      />
     </View>
   );
 }
@@ -287,15 +335,37 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  loadingContainer: {
-    paddingVertical: 60,
+  envBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  envText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.textSecondary,
+  },
+  skeletonContainer: {
+    paddingVertical: 10,
+  },
+  skeletonHalf: {
+    flex: 1,
+    height: 80,
+    backgroundColor: colors.border,
+    borderRadius: 14,
   },
   receivableCard: {
     padding: 20,
@@ -483,7 +553,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.creditSubtle,
     paddingVertical: 1,
     paddingHorizontal: 6,
     borderRadius: 8,

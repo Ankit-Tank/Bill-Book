@@ -12,6 +12,7 @@
  */
 
 import { mockDataService } from './mockDataService';
+import { apiDataService } from './apiDataService';
 import {
   Party,
   CreatePartyInput,
@@ -69,6 +70,9 @@ export interface DataService {
   narrateReport?(reportType: string, data: Record<string, unknown>): Promise<NarrationResponse>;
 }
 
-// In Phase 1: Defaults to mockDataService.
-// In Phase 4: Switches to apiDataService when EXPO_PUBLIC_USE_MOCK === 'false'.
-export const dataService: DataService = mockDataService;
+// Choose mock or real with EXPO_PUBLIC_USE_MOCK.
+// If EXPO_PUBLIC_USE_MOCK === 'false', use live Flask REST API (apiDataService).
+// Otherwise default to local AsyncStorage mock (mockDataService).
+const useMock = process.env.EXPO_PUBLIC_USE_MOCK !== 'false';
+
+export const dataService: DataService = useMock ? mockDataService : apiDataService;

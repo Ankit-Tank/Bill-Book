@@ -23,6 +23,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="party/[id]/edit"
+          options={{
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
           name="transaction/new"
           options={{
             headerShown: false,
