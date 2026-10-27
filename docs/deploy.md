@@ -124,4 +124,26 @@ Run the full automated test suite:
 source backend/.venv/bin/activate
 pytest backend/tests -v
 ```
-All 24 test cases assert endpoint functionality, authentication, positive integer validation, soft deletion, and hand-calculated financial metrics.
+All 76 automated test cases assert endpoint functionality, authentication, positive integer validation, soft deletion, hand-calculated financial metrics, and alert rules.
+
+---
+
+## 7. Free-Tier Sleeping Hosts & Warm-up Strategy
+
+Free-tier cloud hosting providers (e.g., Render Free, Fly.io, Railway, or Koyeb) typically spin down containers to sleep after 15 minutes of inbound inactivity. A subsequent mobile request will encounter a **cold start delay of 30 to 50 seconds** while the Python container boots and initializes database connection pools.
+
+### Recommended Warm-up Techniques:
+
+1. **Scheduled Health Ping (Recommended for Free Render/Railway):**
+   Configure a free uptime monitor (e.g., [UptimeRobot](https://uptimerobot.com), [Better Uptime](https://betteruptime.com), or [cron-job.org](https://cron-job.org)) to send an HTTP GET request to `/api/v1/health` every **10 to 14 minutes**:
+   ```http
+   GET https://your-app.onrender.com/api/v1/health HTTP/1.1
+   ```
+   - This endpoint requires no `X-API-Key` and responds in `<10ms` without performing heavy database queries.
+   - Prevents the free host from falling asleep during shop business hours.
+
+2. **Mobile App Launch Warm-up:**
+   In the mobile app root (`mobile/App.tsx` or splash screen handler), issue an asynchronous background ping to `/api/v1/health` as soon as the app mounts. If the backend is asleep, this kicks off the wake-up sequence immediately while the splash screen or initial UI is rendering.
+
+3. **Client-Side Timeout Tolerance:**
+   Configure mobile network clients (Axios / Fetch) with a minimum timeout of **45 to 60 seconds** on the initial cold request to prevent false network failure screens while the container boots.

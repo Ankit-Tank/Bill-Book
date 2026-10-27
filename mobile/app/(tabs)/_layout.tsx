@@ -1,75 +1,89 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../src/theme/colors';
+import { AddActionModal } from '../../src/features/capture/AddActionModal';
 
 export default function TabLayout() {
   const router = useRouter();
+  const [showAddMenu, setShowAddMenu] = useState(false);
+
+  const handleSelectOption = (option: 'manual' | 'photo' | 'voice') => {
+    if (option === 'manual') {
+      router.push('/transaction/new');
+    } else {
+      router.push({
+        pathname: '/transaction/capture',
+        params: { mode: option },
+      });
+    }
+  };
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primaryGreen,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: styles.tabBar,
-        tabBarLabelStyle: styles.tabBarLabel,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'grid' : 'grid-outline'}
-              size={22}
-              color={color as string}
-            />
-          ),
+    <>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.primaryGreen,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarStyle: styles.tabBar,
+          tabBarLabelStyle: styles.tabBarLabel,
         }}
-      />
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'grid' : 'grid-outline'}
+                size={22}
+                color={color as string}
+              />
+            ),
+          }}
+        />
 
-      <Tabs.Screen
-        name="parties"
-        options={{
-          title: 'Parties',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'people' : 'people-outline'}
-              size={22}
-              color={color as string}
-            />
-          ),
-        }}
-      />
+        <Tabs.Screen
+          name="parties"
+          options={{
+            title: 'Parties',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'people' : 'people-outline'}
+                size={22}
+                color={color as string}
+              />
+            ),
+          }}
+        />
 
-      {/* Center Gold FAB Button */}
-      <Tabs.Screen
-        name="center-fab"
-        options={{
-          title: '',
-          tabBarButton: () => (
-            <View style={styles.fabWrapper}>
-              <TouchableOpacity
-                onPress={() => router.push('/transaction/new')}
-                style={styles.fabButton}
-                activeOpacity={0.85}
-                accessibilityLabel="Add New Transaction"
-              >
-                <Ionicons name="add" size={32} color={colors.onboardingDarkGreen} />
-              </TouchableOpacity>
-            </View>
-          ),
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push('/transaction/new');
-          },
-        }}
-      />
+        {/* Center Gold FAB Button */}
+        <Tabs.Screen
+          name="center-fab"
+          options={{
+            title: '',
+            tabBarButton: () => (
+              <View style={styles.fabWrapper}>
+                <TouchableOpacity
+                  onPress={() => setShowAddMenu(true)}
+                  style={styles.fabButton}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Add New Entry"
+                >
+                  <Ionicons name="add" size={32} color={colors.onboardingDarkGreen} />
+                </TouchableOpacity>
+              </View>
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              setShowAddMenu(true);
+            },
+          }}
+        />
 
       <Tabs.Screen
         name="reports"
@@ -99,6 +113,13 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+
+      <AddActionModal
+        visible={showAddMenu}
+        onClose={() => setShowAddMenu(false)}
+        onSelectOption={handleSelectOption}
+      />
+    </>
   );
 }
 
@@ -111,7 +132,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 28 : 8,
     paddingTop: 8,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,

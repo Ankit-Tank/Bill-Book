@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
@@ -73,9 +73,9 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   cream: {
-    backgroundColor: '#FFFDF0',
+    backgroundColor: colors.goldLight,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: colors.goldBorder,
   },
   dark: {
     backgroundColor: colors.onboardingDarkGreen,

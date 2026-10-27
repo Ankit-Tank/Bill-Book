@@ -10,11 +10,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { AppHeader, AmountText, PrimaryButton, EmptyState } from '../../src/components';
+import {
+  AppHeader,
+  AmountText,
+  PrimaryButton,
+  EmptyState,
+  ListItemSkeleton,
+  ErrorBanner,
+} from '../../src/components';
 import { colors } from '../../src/theme/colors';
 import { dataService } from '../../src/services/dataService';
 import { Party, PartyType, CreatePartyInput } from '../../src/types';
@@ -27,6 +33,7 @@ export default function PartiesScreen() {
   const [selectedType, setSelectedType] = useState<'all' | PartyType>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Add Party Modal state
   const [modalVisible, setModalVisible] = useState(false);
@@ -34,18 +41,20 @@ export default function PartiesScreen() {
   const [phone, setPhone] = useState('');
   const [partyType, setPartyType] = useState<PartyType>('customer');
   const [openingBalance, setOpeningBalance] = useState('');
+  const [creditLimit, setCreditLimit] = useState('');
   const [dueDays, setDueDays] = useState('30');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchPartiesList = useCallback(async () => {
     try {
+      setError(null);
       const data = await dataService.listParties({
         search: search.trim() || undefined,
         type: selectedType === 'all' ? undefined : selectedType,
       });
       setParties(data);
-    } catch (err) {
-      console.error('Failed to load parties:', err);
+    } catch (err: any) {
+      setError(err?.message || 'Could not connect to live ledger server.');
     }
   }, [search, selectedType]);
 
@@ -59,12 +68,13 @@ export default function PartiesScreen() {
       .then((data) => {
         if (isMounted) {
           setParties(data);
+          setError(null);
           setLoading(false);
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         if (isMounted) {
-          console.error('Failed to load parties:', err);
+          setError(err?.message || 'Failed to load parties from server.');
           setLoading(false);
         }
       });
@@ -93,6 +103,7 @@ export default function PartiesScreen() {
         phone: phone.trim() || null,
         type: partyType,
         opening_balance: openingBalance ? parseINRToPaise(openingBalance) : 0,
+        credit_limit: creditLimit ? parseINRToPaise(creditLimit) : 5000000,
         due_days: parseInt(dueDays, 10) || 30,
       };
 
@@ -101,6 +112,7 @@ export default function PartiesScreen() {
       setName('');
       setPhone('');
       setOpeningBalance('');
+      setCreditLimit('');
       setDueDays('30');
       await fetchPartiesList();
       // Navigate to the newly created party detail
@@ -117,7 +129,6 @@ export default function PartiesScreen() {
     const isPayable = item.balance < 0;
     const isSettled = item.balance === 0;
 
-    // Initials for avatar
     const initials = item.name
       .split(' ')
       .map((n) => n[0])
@@ -143,13 +154,13 @@ export default function PartiesScreen() {
             <View
               style={[
                 styles.typeTag,
-                { backgroundColor: item.type === 'customer' ? '#E0F2FE' : '#FEF3C7' },
+                { backgroundColor: item.type === 'customer' ? colors.infoLight : colors.warningLight },
               ]}
             >
               <Text
                 style={[
                   styles.typeTagText,
-                  { color: item.type === 'customer' ? '#0369A1' : '#B45309' },
+                  { color: item.type === 'customer' ? colors.infoText : colors.warningText },
                 ]}
               >
                 {item.type}
@@ -238,13 +249,24 @@ export default function PartiesScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {error ? (
+          <ErrorBanner
+            message={error}
+            onRetry={handleRefresh}
+            onDismiss={() => setError(null)}
+          />
+        ) : null}
       </View>
 
-      {/* Parties List */}
+      {/* Parties List or Skeletons */}
       {loading && !parties.length ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primaryGreen} />
-          <Text style={styles.loadingText}>Loading parties...</Text>
+        <View style={styles.skeletonContainer}>
+          <ListItemSkeleton />
+          <ListItemSkeleton />
+          <ListItemSkeleton />
+          <ListItemSkeleton />
+          <ListItemSkeleton />
         </View>
       ) : (
         <FlatList
@@ -358,7 +380,6 @@ export default function PartiesScreen() {
               placeholderTextColor={colors.textMuted}
               value={name}
               onChangeText={setName}
-              autoFocus
             />
 
             {/* Phone Input */}
@@ -372,7 +393,7 @@ export default function PartiesScreen() {
               keyboardType="phone-pad"
             />
 
-            {/* Opening Balance */}
+            {/* Opening Balance & Due Days */}
             <View style={styles.inputRow}>
               <View style={styles.inputHalf}>
                 <Text style={styles.inputLabel}>Opening Balance (₹)</Text>
@@ -386,6 +407,20 @@ export default function PartiesScreen() {
                 />
               </View>
 
+              <View style={styles.inputHalf}>
+                <Text style={styles.inputLabel}>Credit Limit (₹)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="50000"
+                  placeholderTextColor={colors.textMuted}
+                  value={creditLimit}
+                  onChangeText={setCreditLimit}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputRow}>
               <View style={styles.inputHalf}>
                 <Text style={styles.inputLabel}>Due Term (Days)</Text>
                 <TextInput
@@ -448,6 +483,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 10,
+    marginBottom: 4,
   },
   chip: {
     paddingVertical: 6,
@@ -469,6 +505,9 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: colors.textWhite,
   },
+  skeletonContainer: {
+    padding: 16,
+  },
   listContent: {
     padding: 16,
     paddingBottom: 90,
@@ -487,7 +526,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.creditLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -538,17 +577,6 @@ const styles = StyleSheet.create({
   arrow: {
     marginLeft: 4,
   },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   fab: {
     position: 'absolute',
     right: 20,
@@ -560,7 +588,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 26,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 5,
@@ -570,7 +598,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -637,7 +664,7 @@ const styles = StyleSheet.create({
   },
   typeOptionActive: {
     borderColor: colors.primaryGreen,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.creditSubtle,
   },
   typeOptionText: {
     fontSize: 13,

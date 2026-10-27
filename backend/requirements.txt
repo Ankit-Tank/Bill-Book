@@ -6,3 +6,4 @@ gunicorn==23.0.0
 pytest==8.3.4
 python-dotenv==1.0.1
 google-genai==2.8.0
+APScheduler==3.11.3

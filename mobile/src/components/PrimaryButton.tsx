@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   disabled: {
-    backgroundColor: '#E2E8F0',
-    borderColor: '#CBD5E1',
+    backgroundColor: colors.border,
+    borderColor: colors.skeleton,
     elevation: 0,
     shadowOpacity: 0,
   },

@@ -16,6 +16,7 @@ export interface AppHeaderProps {
     onPress: () => void;
     accessibilityLabel?: string;
   };
+  rightElement?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   showBack = false,
   onBack,
   rightAction,
+  rightElement,
   children,
 }) => {
   const insets = useSafeAreaInsets();
@@ -67,7 +69,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </View>
 
         <View style={styles.rightSlot}>
-          {rightAction ? (
+          {rightElement ? (
+            rightElement
+          ) : rightAction ? (
             <TouchableOpacity
               onPress={rightAction.onPress}
               style={styles.actionButton}
@@ -93,7 +97,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
