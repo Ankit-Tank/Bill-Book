@@ -31,6 +31,11 @@ import {
   NarrationResponse,
 } from '../types';
 
+function canUseOfflineFallback(error: unknown): boolean {
+  return error instanceof ApiClientError &&
+    (error.code === 'NETWORK_ERROR' || error.code === 'TIMEOUT');
+}
+
 class ApiDataService implements DataService {
   // --- Data Mapping Helpers ---
 
@@ -212,9 +217,12 @@ class ApiDataService implements DataService {
         last_payment_amount: raw.last_payment_amount ? Number(raw.last_payment_amount) : null,
         risk_level: raw.risk_level || 'low',
       };
-    } catch {
-      // Backend credit report endpoint is implemented in Phase 5.
-      // Gracefully calculate against the party & ledger response shape as defined in Section 7 of docs/api.md.
+    } catch (error) {
+      if (!canUseOfflineFallback(error)) {
+        throw error;
+      }
+
+      // Keep credit reports usable while the API is unreachable.
       const party = await this.getParty(partyId);
       const txs = await this.listTransactions({ party_id: partyId });
 
@@ -263,7 +271,10 @@ class ApiDataService implements DataService {
         format: params.format,
       };
       return await apiClient.get<ReportData>(`/reports/${params.type}`, queryParams);
-    } catch {
+    } catch (error) {
+      if (!canUseOfflineFallback(error)) {
+        throw error;
+      }
       return mockDataService.getReport(params);
     }
   }
@@ -276,7 +287,10 @@ class ApiDataService implements DataService {
         unread_only: filter?.unread_only ? 'true' : undefined,
       });
       return res.alerts || [];
-    } catch {
+    } catch (error) {
+      if (!canUseOfflineFallback(error)) {
+        throw error;
+      }
       return mockDataService.listAlerts(filter);
     }
   }
@@ -284,7 +298,10 @@ class ApiDataService implements DataService {
   async markAlertRead(id: string): Promise<void> {
     try {
       await apiClient.post(`/alerts/${encodeURIComponent(id)}/read`);
-    } catch {
+    } catch (error) {
+      if (!canUseOfflineFallback(error)) {
+        throw error;
+      }
       await mockDataService.markAlertRead(id);
     }
   }
@@ -355,6 +372,10 @@ class ApiDataService implements DataService {
         throw new ApiClientError('Upload cancelled by user', 'CANCELLED', 0);
       }
       if (err instanceof ApiClientError) {
+        if (!canUseOfflineFallback(err)) {
+          throw err;
+        }
+      } else if (!canUseOfflineFallback(err)) {
         throw err;
       }
       return mockDataService.extractFromMedia(fileUri, mediaType, options);
@@ -364,7 +385,10 @@ class ApiDataService implements DataService {
   async sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse> {
     try {
       return await apiClient.post<ChatResponse>('/ai/chat', { message, history });
-    } catch {
+    } catch (error) {
+      if (!canUseOfflineFallback(error)) {
+        throw error;
+      }
       return mockDataService.sendChat(message, history);
     }
   }
@@ -375,9 +399,12 @@ class ApiDataService implements DataService {
         report_type: reportType,
         data,
       });
-    } catch {
+    } catch (error) {
+      if (!canUseOfflineFallback(error)) {
+        throw error;
+      }
       return {
-        narration: `Your ledger currently shows steady collections with healthy customer balances.`,
+        narration: 'Your ledger currently shows steady collections with healthy customer balances.',
       };
     }
   }

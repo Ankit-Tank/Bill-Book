@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  Platform,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -17,14 +16,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader, Card, PrimaryButton } from '../../src/components';
 import { colors } from '../../src/theme/colors';
 import { mockDataService } from '../../src/services/mockDataService';
-import { apiClient } from '../../src/services/apiClient';
 
 const SHOP_PROFILE_KEY = '@billbook_shop_profile';
 
 export default function MoreScreen() {
   const router = useRouter();
   const [resetting, setResetting] = useState(false);
-  const [checkingHealth, setCheckingHealth] = useState(false);
 
   // Shop Profile state
   const [shopName, setShopName] = useState('Gupta Kirana Store');
@@ -88,24 +85,6 @@ export default function MoreScreen() {
       );
     } catch {
       // Ignored
-    }
-  };
-
-  const handleTestHealth = async () => {
-    setCheckingHealth(true);
-    try {
-      const res = await apiClient.get<any>('/health');
-      Alert.alert(
-        'Backend Healthy (200 OK)',
-        `Server Status: ${res.status}\nAPI Version: ${res.version}\nTimestamp: ${res.timestamp}\nConnected to Supabase PostgreSQL.`
-      );
-    } catch (err: any) {
-      Alert.alert(
-        'Backend Health Failed',
-        `Could not reach API:\n${err?.message || 'Connection error'}`
-      );
-    } finally {
-      setCheckingHealth(false);
     }
   };
 
@@ -173,28 +152,7 @@ export default function MoreScreen() {
           </View>
         </Card>
 
-        {/* Backend Connection Card */}
-        <Text style={styles.sectionTitle}>Cloud Backend & Database</Text>
-        <Card variant="default" style={styles.connectionCard}>
-          <View style={styles.connectionHeader}>
-            <View style={styles.connStatusDot} />
-            <Text style={styles.connTitle}>Flask REST API + Supabase Postgres</Text>
-          </View>
-          <Text style={styles.connUrl}>
-            {process.env.EXPO_PUBLIC_API_URL || 'https://powerful-giving-labeled-advances.trycloudflare.com/api/v1'}
-          </Text>
-          <PrimaryButton
-            title="Check API Health (/health)"
-            onPress={handleTestHealth}
-            loading={checkingHealth}
-            variant="outline"
-            size="sm"
-            style={{ marginTop: 10 }}
-          />
-        </Card>
-
-        {/* Feature Roadmap Items */}
-        <Text style={styles.sectionTitle}>Advanced Modules</Text>
+        <Text style={styles.sectionTitle}>Tools</Text>
 
         <View style={styles.menuGroup}>
           <TouchableOpacity
@@ -237,73 +195,37 @@ export default function MoreScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuTitle}>Live Supabase Sync</Text>
-              <Text style={styles.menuSub}>Connected to PostgreSQL party_balances view</Text>
+              <Text style={styles.menuSub}>
+                {isLiveApi ? 'Connected to your live ledger' : 'Using local demo data'}
+              </Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: colors.creditLight }]}>
-              <Text style={[styles.badgeText, { color: colors.credit }]}>Ready</Text>
+            <View style={[styles.badge, { backgroundColor: isLiveApi ? colors.creditLight : colors.surfaceNeutral }]}>
+              <Text style={[styles.badgeText, { color: isLiveApi ? colors.credit : colors.textMuted }]}>
+                {isLiveApi ? 'Live' : 'Offline'}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* About BillBook Section */}
-        <Text style={styles.sectionTitle}>About BillBook</Text>
-        <Card variant="default" style={styles.aboutCard}>
-          <View style={styles.aboutHeader}>
-            <View style={styles.aboutLogo}>
-              <Ionicons name="book" size={24} color={colors.primaryGreen} />
-            </View>
-            <View>
-              <Text style={styles.aboutAppName}>BillBook</Text>
-              <Text style={styles.aboutVersion}>Version 1.0.0 (Release Candidate)</Text>
-            </View>
-          </View>
-
-          <Text style={styles.aboutDesc}>
-            Smart digital Khata and credit ledger app designed for local Indian merchants.
-            Replaces physical paper bahi-khatas with AI multimodal bill extraction, voice
-            transaction recording, conversational ledger queries, automated credit risk scoring,
-            and proactive payment overdue alerts.
-          </Text>
-
-          <View style={styles.divider} />
-
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>Architecture</Text>
-            <Text style={styles.aboutValue}>Expo React Native + Flask + Supabase + Gemini</Text>
-          </View>
-
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>Money Rules</Text>
-            <Text style={styles.aboutValue}>Strict Integer Paise (Zero Float Drift)</Text>
-          </View>
-
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>Team</Text>
-            <Text style={styles.aboutValue}>Team Thunderbytes (Avnish, Krishna, Ankit)</Text>
-          </View>
-
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>License</Text>
-            <Text style={styles.aboutValue}>MIT License</Text>
-          </View>
-        </Card>
-
-        {/* Demo Management */}
-        <Text style={styles.sectionTitle}>Mentor Demo Tools</Text>
-        <Card variant="cream" style={styles.demoCard}>
-          <Text style={styles.demoTitle}>Need to reset offline mock data?</Text>
-          <Text style={styles.demoDesc}>
-            Restores the original 6 parties and 20 ledger transactions in AsyncStorage.
-          </Text>
-          <PrimaryButton
-            title="Reset to Initial Seed Data"
-            onPress={handleResetData}
-            loading={resetting}
-            variant="outline"
-            size="sm"
-            style={{ marginTop: 12 }}
-          />
-        </Card>
+        {(!isLiveApi) && (
+          <>
+            <Text style={styles.sectionTitle}>Demo Data</Text>
+            <Card variant="cream" style={styles.demoCard}>
+              <Text style={styles.demoTitle}>Reset offline demo data</Text>
+              <Text style={styles.demoDesc}>
+                Restore the original parties and ledger transactions in local storage.
+              </Text>
+              <PrimaryButton
+                title="Reset demo data"
+                onPress={handleResetData}
+                loading={resetting}
+                variant="outline"
+                size="sm"
+                style={{ marginTop: 12 }}
+              />
+            </Card>
+          </>
+        )}
       </ScrollView>
 
       {/* Edit Shop Profile Modal */}
@@ -342,7 +264,7 @@ export default function MoreScreen() {
                   placeholderTextColor={colors.textMuted}
                 />
 
-                <Text style={styles.fieldLabel}>Contact Phone / GSTIN</Text>
+                <Text style={styles.fieldLabel}>Contact Phone</Text>
                 <TextInput
                   style={styles.modalInput}
                   value={inputPhone}
@@ -472,34 +394,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 8,
   },
-  connectionCard: {
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  connectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  connStatusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.credit,
-  },
-  connTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  connUrl: {
-    fontSize: 11,
-    color: colors.textMuted,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginVertical: 4,
-  },
   menuGroup: {
     backgroundColor: colors.surface,
     borderRadius: 16,
@@ -546,63 +440,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: colors.textMuted,
-  },
-  aboutCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  aboutHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  aboutLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.creditLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aboutAppName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.primaryGreen,
-  },
-  aboutVersion: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  aboutDesc: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 19,
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.borderLight,
-    marginVertical: 12,
-  },
-  aboutRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  aboutLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  aboutValue: {
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    maxWidth: '65%',
-    textAlign: 'right',
   },
   demoCard: {
     padding: 16,
