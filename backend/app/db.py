@@ -30,7 +30,16 @@ def init_db_pool(app) -> None:
 
     min_conn = 1
     max_conn = 20
-    _pool = ThreadedConnectionPool(min_conn, max_conn, dsn=db_url, **connect_kwargs)
+    try:
+        _pool = ThreadedConnectionPool(min_conn, max_conn, dsn=db_url, **connect_kwargs)
+    except psycopg2.OperationalError as e:
+        app.logger.warning(
+            "Could not connect to PostgreSQL database (%s). "
+            "Server will start in degraded mode (database queries will return 503 until connected): %s",
+            db_url,
+            e,
+        )
+        _pool = None
 
 
 def close_db_pool() -> None:
@@ -46,6 +55,13 @@ def get_db():
     if "db_conn" not in g:
         if _pool is None:
             init_db_pool(current_app)
+        if _pool is None:
+            from . import APIError
+            raise APIError(
+                "DATABASE_UNAVAILABLE",
+                "Database connection failed. Ensure PostgreSQL or Supabase is running and check DATABASE_URL in .env.",
+                503,
+            )
         g.db_conn = _pool.getconn()
     return g.db_conn
 
