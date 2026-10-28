@@ -2,13 +2,50 @@ import os
 import uuid
 import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, overload
 import psycopg2
 from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor
 from flask import g, current_app
 
 _pool: Optional[ThreadedConnectionPool] = None
+
+
+def _redact_url(url: str) -> str:
+    """Hide the user:password part of a connection string before logging it."""
+    import re
+    return re.sub(r"://[^@/]*@", "://***@", url or "")
+
+
+def ensure_views(app) -> None:
+    """Create or refresh the analytical SQL views the reports, credit and alert features rely on.
+
+    The statements use CREATE OR REPLACE, so this is safe to run on every start. It means a fresh
+    Supabase project only needs supabase/schema.sql applied by hand.
+    """
+    if _pool is None:
+        return
+    path = os.path.join(os.path.dirname(__file__), "sql", "views.sql")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            sql = fh.read()
+    except OSError as e:
+        app.logger.warning("Could not read views.sql: %s", e)
+        return
+    conn = None
+    try:
+        conn = _pool.getconn()
+        with conn.cursor() as cur:
+            cur.execute(sql)
+        conn.commit()
+        app.logger.info("Analytical views are up to date")
+    except Exception as e:  # noqa: BLE001
+        if conn is not None:
+            conn.rollback()
+        app.logger.warning("Could not apply analytical views (is schema.sql applied?): %s", e)
+    finally:
+        if conn is not None:
+            _pool.putconn(conn)
 
 
 def init_db_pool(app) -> None:
@@ -30,7 +67,16 @@ def init_db_pool(app) -> None:
 
     min_conn = 1
     max_conn = 20
-    _pool = ThreadedConnectionPool(min_conn, max_conn, dsn=db_url, **connect_kwargs)
+    try:
+        _pool = ThreadedConnectionPool(min_conn, max_conn, dsn=db_url, **connect_kwargs)
+    except psycopg2.OperationalError as e:
+        app.logger.warning(
+            "Could not connect to PostgreSQL database (%s). "
+            "Server will start in degraded mode (database queries will return 503 until connected): %s",
+            _redact_url(db_url),
+            e,
+        )
+        _pool = None
 
 
 def close_db_pool() -> None:
@@ -46,6 +92,13 @@ def get_db():
     if "db_conn" not in g:
         if _pool is None:
             init_db_pool(current_app)
+        if _pool is None:
+            from . import APIError
+            raise APIError(
+                "DATABASE_UNAVAILABLE",
+                "Database connection failed. Ensure PostgreSQL or Supabase is running and check DATABASE_URL in .env.",
+                503,
+            )
         g.db_conn = _pool.getconn()
     return g.db_conn
 
@@ -78,6 +131,14 @@ def serialize_value(v: Any) -> Any:
     elif isinstance(v, Decimal):
         return int(v) if v % 1 == 0 else float(v)
     return v
+
+
+@overload
+def serialize_row(row: None) -> None: ...
+
+
+@overload
+def serialize_row(row: Dict[str, Any]) -> Dict[str, Any]: ...
 
 
 def serialize_row(row: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:

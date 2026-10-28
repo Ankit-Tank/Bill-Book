@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { colors } from '../../theme/colors';
 import { Party, Transaction } from '../../types';
 import { formatINR, formatDate } from '../../utils/format';
 import { AmountText } from '../../components/AmountText';
+import { DEFAULT_SHOP_PROFILE, loadShopProfile, ShopProfile } from '../../services/shopProfile';
 
 export interface StatementModalProps {
   party: Party;
@@ -29,6 +30,14 @@ export const StatementModal: React.FC<StatementModalProps> = ({
   onClose,
   dateRangeLabel = 'Complete Ledger Statement',
 }) => {
+  const [shop, setShop] = useState<ShopProfile>(DEFAULT_SHOP_PROFILE);
+
+  useEffect(() => {
+    if (visible) {
+      loadShopProfile().then(setShop);
+    }
+  }, [visible]);
+
   if (!visible) return null;
 
   const activeTxs = transactions.filter((t) => !t.deleted_at);
@@ -48,7 +57,12 @@ export const StatementModal: React.FC<StatementModalProps> = ({
           {/* Header */}
           <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.shopName}>Gupta Kirana Store</Text>
+              <Text style={styles.shopName}>{shop.name}</Text>
+              {shop.address || shop.phone ? (
+                <Text style={styles.partyDetails} numberOfLines={2}>
+                  {[shop.address, shop.phone].filter(Boolean).join(' • ')}
+                </Text>
+              ) : null}
               <Text style={styles.statementTitle}>Account Statement / Khata Parcha</Text>
             </View>
             <TouchableOpacity

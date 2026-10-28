@@ -1,0 +1,15 @@
+{
+  "name": "bill-book-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BillBook root runner scripts",
+  "scripts": {
+    "start": "npm --prefix mobile run start",
+    "tunnel": "npm --prefix mobile run tunnel",
+    "mobile": "npm --prefix mobile run start",
+    "web": "npm --prefix mobile run web",
+    "android": "npm --prefix mobile run android",
+    "ios": "npm --prefix mobile run ios",
+    "typecheck": "npm --prefix mobile run typecheck"
+  }
+}

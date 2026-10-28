@@ -572,6 +572,8 @@ const RenderCollection: React.FC<{
     ),
   }));
 
+  const maxVal = Math.max(10, ...barData.map((d) => d.value));
+
   return (
     <View>
       <View style={styles.kpiRow}>
@@ -639,6 +641,11 @@ const RenderWeekly: React.FC<{
   onSelectParty?: (partyId: string) => void;
   onClose: () => void;
 }> = ({ data, chartWidth, onSelectParty, onClose }) => {
+  const salesTotal = data?.sales_total ?? 0;
+  const collectionsTotal = data?.collections_total ?? 0;
+  const salesGrowth = data?.sales_growth_percent ?? 0;
+  const topDebtors = data?.top_debtors || [];
+
   const comparisonData = [
     {
       value: Math.round((data?.sales_total || 0) / 100000),
@@ -691,6 +698,7 @@ const RenderWeekly: React.FC<{
             xAxisColor={colors.border}
             yAxisThickness={0}
             xAxisLabelTextStyle={{ color: colors.textPrimary, fontSize: 11, fontWeight: '700' }}
+            maxValue={maxVal}
           />
         </View>
       </View>
@@ -732,6 +740,12 @@ const RenderMonthly: React.FC<{
   onSelectParty?: (partyId: string) => void;
   onClose: () => void;
 }> = ({ data, chartWidth, onSelectParty, onClose }) => {
+  const salesTotal = data?.sales_total ?? 0;
+  const collectionsTotal = data?.collections_total ?? 0;
+  const salesGrowth = data?.previous_month_comparison?.sales_growth_percent ?? 0;
+  const collectionsGrowth = data?.previous_month_comparison?.collections_growth_percent ?? 0;
+  const topDebtors = data?.top_debtors || [];
+
   const comparisonData = [
     {
       value: Math.round((data?.sales_total || 0) / 100000),
@@ -788,6 +802,7 @@ const RenderMonthly: React.FC<{
             xAxisColor={colors.border}
             yAxisThickness={0}
             xAxisLabelTextStyle={{ color: colors.textPrimary, fontSize: 11, fontWeight: '700' }}
+            maxValue={maxVal}
           />
         </View>
       </View>
@@ -1084,6 +1099,25 @@ const styles = StyleSheet.create({
   emptyCard: {
     padding: 24,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    marginTop: 8,
+  },
+  emptyCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  emptyCardText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   emptyText: {
     fontSize: 13,

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 
 from .config import Config
-from .db import init_db_pool, close_db, close_db_pool
+from .db import init_db_pool, close_db, close_db_pool, ensure_views
 from .routes import register_routes
 
 
@@ -62,6 +62,8 @@ def create_app(config_class=None) -> Flask:
 
     # Initialize database pool
     init_db_pool(app)
+    if not app.config.get("TESTING"):
+        ensure_views(app)
 
     # Register database connection teardown
     app.teardown_appcontext(close_db)

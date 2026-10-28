@@ -55,7 +55,8 @@ class NarrationService:
             return _NARRATION_CACHE[cache_key]
 
         # Call live Gemini if configured
-        if self.gemini_client.is_configured() and self.gemini_client._client is not None:
+        client = self.gemini_client._client
+        if self.gemini_client.is_configured() and client is not None:
             try:
                 from google.genai import types
 
@@ -71,7 +72,7 @@ class NarrationService:
                     temperature=0.2,
                 )
 
-                response = self.gemini_client._client.models.generate_content(
+                response = client.models.generate_content(
                     model=self.gemini_client.model,
                     contents=[prompt],
                     config=config,

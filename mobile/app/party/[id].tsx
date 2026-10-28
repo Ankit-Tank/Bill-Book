@@ -475,7 +475,7 @@ export default function PartyDetailScreen() {
               />
             </View>
 
-            {/* Phase 4 Advanced Tools: Statement & Credit Report */}
+            {/* Statement & credit report */}
             <View style={styles.toolsRow}>
               <TouchableOpacity
                 style={styles.toolBtn}

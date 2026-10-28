@@ -21,8 +21,10 @@ export class ApiClientError extends Error {
   }
 }
 
-const DEFAULT_API_URL = 'https://powerful-giving-labeled-advances.trycloudflare.com/api/v1';
-const DEFAULT_API_KEY = 'billbook-secret-dev-key';
+// Local development defaults only. Production/web builds must set EXPO_PUBLIC_API_URL
+// and EXPO_PUBLIC_API_KEY at build time.
+const DEFAULT_API_URL = 'http://localhost:5000/api/v1';
+const DEFAULT_DEV_API_KEY = 'billbook-secret-dev-key';
 
 class ApiClient {
   private getBaseUrl(): string {
@@ -32,7 +34,7 @@ class ApiClient {
   }
 
   private getApiKey(): string {
-    return process.env.EXPO_PUBLIC_API_KEY || DEFAULT_API_KEY;
+    return process.env.EXPO_PUBLIC_API_KEY || (__DEV__ ? DEFAULT_DEV_API_KEY : '');
   }
 
   private async request<T>(
@@ -112,7 +114,11 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string, queryParams?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  async get<T>(
+    endpoint: string,
+    queryParams?: Record<string, string | number | boolean | undefined>,
+    timeoutMs: number = 15000
+  ): Promise<T> {
     let url = endpoint;
     if (queryParams) {
       const parts: string[] = [];
@@ -125,26 +131,39 @@ class ApiClient {
         url += (url.includes('?') ? '&' : '?') + parts.join('&');
       }
     }
-    return this.request<T>(url, { method: 'GET' });
+    return this.request<T>(url, { method: 'GET' }, timeoutMs);
   }
 
-  async post<T>(endpoint: string, body?: any, requestOptions?: RequestInit): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
-      ...requestOptions,
-    });
+  async post<T>(
+    endpoint: string,
+    body?: any,
+    requestOptions?: RequestInit,
+    timeoutMs: number = 15000
+  ): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'POST',
+        body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+        ...requestOptions,
+      },
+      timeoutMs
+    );
   }
 
-  async patch<T>(endpoint: string, body?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  async patch<T>(endpoint: string, body?: any, timeoutMs: number = 15000): Promise<T> {
+    return this.request<T>(
+      endpoint,
+      {
+        method: 'PATCH',
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      timeoutMs
+    );
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string, timeoutMs: number = 15000): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' }, timeoutMs);
   }
 }
 

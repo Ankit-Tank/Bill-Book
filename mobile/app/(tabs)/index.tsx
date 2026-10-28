@@ -14,12 +14,10 @@ import {
   Card,
   AmountText,
   EmptyState,
-  PrimaryButton,
   CardSkeleton,
   ListItemSkeleton,
   ErrorBanner,
 } from '../../src/components';
-import { WelcomeModal } from '../../src/features/onboarding/WelcomeModal';
 import { AlertsBellBadge } from '../../src/features/alerts';
 import { AiInsightCard } from '../../src/features/assistant';
 import { colors } from '../../src/theme/colors';
@@ -33,7 +31,6 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [welcomeVisible, setWelcomeVisible] = useState(false);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -74,13 +71,11 @@ export default function DashboardScreen() {
     setRefreshing(false);
   }, [fetchSummary]);
 
-  const isLiveApi = process.env.EXPO_PUBLIC_USE_MOCK === 'false';
-
   return (
     <View style={styles.container}>
       <AppHeader
         title="BillBook"
-        subtitle="Digital Khata & Credit Ledger"
+        subtitle="Your digital khata"
         rightElement={<AlertsBellBadge onPress={() => router.push('/alerts')} />}
       />
 
@@ -95,17 +90,6 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Environment Status Badge */}
-        <View style={styles.envBar}>
-          <View style={[styles.dot, { backgroundColor: isLiveApi ? colors.credit : colors.goldFab }]} />
-          <Text style={styles.envText}>
-            {isLiveApi ? 'Live API Mode (Supabase Postgres)' : 'Offline Mock Mode (AsyncStorage)'}
-          </Text>
-          <TouchableOpacity onPress={() => setWelcomeVisible(true)}>
-            <Ionicons name="information-circle-outline" size={16} color={colors.primaryGreen} />
-          </TouchableOpacity>
-        </View>
-
         {/* KhataAI Copilot Quick Banner */}
         <TouchableOpacity
           style={styles.aiCopilotBanner}
@@ -116,12 +100,7 @@ export default function DashboardScreen() {
             <Ionicons name="sparkles" size={18} color={colors.primaryGreen} />
           </View>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.aiBannerTitle}>Ask KhataAI Copilot</Text>
-              <View style={styles.aiPill}>
-                <Text style={styles.aiPillText}>Voice & Hindi</Text>
-              </View>
-            </View>
+            <Text style={styles.aiBannerTitle}>Ask KhataAI</Text>
             <Text style={styles.aiBannerSub} numberOfLines={1}>
               {'e.g. "Who owes the most?" or "Aaj ka collection kitna hua?"'}
             </Text>
@@ -259,24 +238,6 @@ export default function DashboardScreen() {
               </View>
             </Card>
 
-            {/* Quick Action Buttons */}
-            <View style={styles.actionsRow}>
-              <PrimaryButton
-                title="+ Add Party"
-                onPress={() => router.push('/(tabs)/parties')}
-                variant="outline"
-                size="sm"
-                style={styles.actionBtn}
-              />
-              <PrimaryButton
-                title="+ New Transaction"
-                onPress={() => router.push('/transaction/new')}
-                variant="gold"
-                size="sm"
-                style={styles.actionBtn}
-              />
-            </View>
-
             {/* Recent Transactions Section */}
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -351,12 +312,6 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollView>
-
-      {/* Welcome Onboarding Modal */}
-      <WelcomeModal
-        visible={welcomeVisible}
-        onClose={() => setWelcomeVisible(false)}
-      />
     </View>
   );
 }
@@ -369,29 +324,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
-  },
-  envBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  envText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
   skeletonContainer: {
     paddingVertical: 10,
@@ -518,14 +450,6 @@ const styles = StyleSheet.create({
     height: 36,
     backgroundColor: colors.border,
   },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginVertical: 12,
-  },
-  actionBtn: {
-    flex: 1,
-  },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -625,17 +549,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.darkGreenText,
-  },
-  aiPill: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  aiPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.primaryGreen,
   },
   aiBannerSub: {
     fontSize: 12,

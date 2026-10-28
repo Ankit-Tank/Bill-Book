@@ -44,7 +44,9 @@ export default function ConfirmExtractionScreen() {
   };
 
   const source = pending?.source || 'photo';
-  const billImagePath = pending?.fileUri || null;
+  // Only a hosted (http/https) link is worth saving. A file:// path exists on this phone only, so it
+  // would be meaningless on the server and for other devices.
+  const billImagePath = pending?.fileUri && /^https?:\/\//i.test(pending.fileUri) ? pending.fileUri : null;
   const needsReview = initialResult.needs_review_fields || [];
 
   // Form states

@@ -1,0 +1,28 @@
+# ==============================================================================
+# BillBook - Monorepo Python Requirements
+# ==============================================================================
+
+# Web Framework & CORS
+Flask==3.1.0
+flask-cors==5.0.0
+
+# Data Validation & Schemas
+pydantic>=2.10.4
+
+# PostgreSQL Database Driver
+psycopg2-binary>=2.9.13
+
+# Production WSGI Server (Container / Production)
+gunicorn==23.0.0
+
+# Environment Configuration
+python-dotenv==1.0.1
+
+# AI & Multimodal Engine (Google Gemini API SDK)
+google-genai==2.8.0
+
+# Background Job Scheduling (Alerts & Reminders)
+APScheduler==3.11.3
+
+# Testing Framework
+pytest==8.3.4

@@ -25,11 +25,11 @@ class GeminiClient:
         max_retries: int = 2,
     ):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
-        self.model = model or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self.model = model or os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
         self.timeout = timeout
         self.max_retries = max_retries
 
-        self._client = None
+        self._client: Optional[Any] = None
         if self.is_configured():
             try:
                 from google import genai
@@ -147,7 +147,7 @@ class GeminiClient:
                     try:
                         val = float(clean_num)
                         if val >= 50:
-                            amount_paise = int(round(val * 100))
+                            amount_paise = round(val * 100)
                             break
                     except ValueError:
                         continue

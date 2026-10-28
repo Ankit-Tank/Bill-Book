@@ -1,5 +1,5 @@
 /**
- * BillBook Live API Data Service (Phase 4)
+ * BillBook live API data service
  * 
  * Implements the DataService interface using apiClient to communicate with
  * the live Flask backend over HTTPS.
@@ -9,7 +9,6 @@
 
 import { apiClient, ApiClientError } from './apiClient';
 import { DataService } from './dataService';
-import { mockDataService } from './mockDataService';
 import {
   Party,
   CreatePartyInput,
@@ -191,105 +190,55 @@ class ApiDataService implements DataService {
     };
   }
 
-  // --- Credit Management (Phase 4 mock-backed, ready for Phase 5 live API) ---
+  // --- Credit management ---
 
   async getCreditReport(partyId: string): Promise<CreditReport> {
-    try {
-      const raw = await apiClient.get<any>(`/parties/${encodeURIComponent(partyId)}/credit-report`);
-      return {
-        party_id: String(raw.party_id),
-        party_name: String(raw.party_name),
-        credit_limit: Number(raw.credit_limit || 0),
-        total_outstanding: Number(raw.total_outstanding || 0),
-        limit_usage_percent: Number(raw.limit_usage_percent || 0),
-        avg_payment_delay_days: Number(raw.avg_payment_delay_days || 0),
-        aging_buckets: {
-          days_0_30: Number(raw.aging_buckets?.days_0_30 || 0),
-          days_31_60: Number(raw.aging_buckets?.days_31_60 || 0),
-          days_60_plus: Number(raw.aging_buckets?.days_60_plus || 0),
-        },
-        last_payment_date: raw.last_payment_date ? String(raw.last_payment_date) : null,
-        last_payment_amount: raw.last_payment_amount ? Number(raw.last_payment_amount) : null,
-        risk_level: raw.risk_level || 'low',
-      };
-    } catch {
-      // Backend credit report endpoint is implemented in Phase 5.
-      // Gracefully calculate against the party & ledger response shape as defined in Section 7 of docs/api.md.
-      const party = await this.getParty(partyId);
-      const txs = await this.listTransactions({ party_id: partyId });
-
-      const total_outstanding = Math.max(0, party.balance);
-      const limit = party.credit_limit || 5000000;
-      const limit_usage_percent = limit > 0 ? Math.round((total_outstanding / limit) * 1000) / 10 : 0;
-
-      const crTxs = txs.filter((t) => t.kind === 'CR');
-      const lastPayment = crTxs.length > 0 ? crTxs[0] : null;
-
-      let risk_level: 'low' | 'moderate' | 'high' = 'low';
-      if (limit_usage_percent > 85) {
-        risk_level = 'high';
-      } else if (limit_usage_percent > 50) {
-        risk_level = 'moderate';
-      }
-
-      return {
-        party_id: party.id,
-        party_name: party.name,
-        credit_limit: limit,
-        total_outstanding,
-        limit_usage_percent,
-        avg_payment_delay_days: 4,
-        aging_buckets: {
-          days_0_30: Math.round(total_outstanding * 0.7),
-          days_31_60: Math.round(total_outstanding * 0.3),
-          days_60_plus: 0,
-        },
-        last_payment_date: lastPayment ? lastPayment.txn_date : null,
-        last_payment_amount: lastPayment ? lastPayment.amount : null,
-        risk_level,
-      };
-    }
+    const raw = await apiClient.get<any>(`/parties/${encodeURIComponent(partyId)}/credit-report`);
+    return {
+      party_id: String(raw.party_id),
+      party_name: String(raw.party_name),
+      credit_limit: Number(raw.credit_limit || 0),
+      total_outstanding: Number(raw.total_outstanding || 0),
+      limit_usage_percent: Number(raw.limit_usage_percent || 0),
+      avg_payment_delay_days: Number(raw.avg_payment_delay_days || 0),
+      aging_buckets: {
+        days_0_30: Number(raw.aging_buckets?.days_0_30 || 0),
+        days_31_60: Number(raw.aging_buckets?.days_31_60 || 0),
+        days_60_plus: Number(raw.aging_buckets?.days_60_plus || 0),
+      },
+      last_payment_date: raw.last_payment_date ? String(raw.last_payment_date) : null,
+      last_payment_amount: raw.last_payment_amount ? Number(raw.last_payment_amount) : null,
+      risk_level: raw.risk_level || 'low',
+    };
   }
 
-  // --- Reports (Phase 5 fallback) ---
+  // --- Reports ---
 
   async getReport(params: ReportParams): Promise<ReportData | string> {
-    try {
-      const queryParams: Record<string, string | undefined> = {
-        date: params.date,
-        start_date: params.start_date,
-        end_date: params.end_date,
-        month: params.month,
-        format: params.format,
-      };
-      return await apiClient.get<ReportData>(`/reports/${params.type}`, queryParams);
-    } catch {
-      return mockDataService.getReport(params);
-    }
+    const queryParams: Record<string, string | undefined> = {
+      date: params.date,
+      start_date: params.start_date,
+      end_date: params.end_date,
+      month: params.month,
+      format: params.format,
+    };
+    return apiClient.get<ReportData>(`/reports/${params.type}`, queryParams);
   }
 
-  // --- Alerts (Phase 8 fallback) ---
+  // --- Alerts ---
 
   async listAlerts(filter?: AlertFilter): Promise<Alert[]> {
-    try {
-      const res = await apiClient.get<{ alerts: Alert[] }>('/alerts', {
-        unread_only: filter?.unread_only ? 'true' : undefined,
-      });
-      return res.alerts || [];
-    } catch {
-      return mockDataService.listAlerts(filter);
-    }
+    const res = await apiClient.get<{ alerts: Alert[] }>('/alerts', {
+      unread_only: filter?.unread_only ? 'true' : undefined,
+    });
+    return res.alerts || [];
   }
 
   async markAlertRead(id: string): Promise<void> {
-    try {
-      await apiClient.post(`/alerts/${encodeURIComponent(id)}/read`);
-    } catch {
-      await mockDataService.markAlertRead(id);
-    }
+    await apiClient.post(`/alerts/${encodeURIComponent(id)}/read`);
   }
 
-  // --- AI (Phase 3 / 6) ---
+  // --- AI ---
 
   async extractFromMedia(
     fileUri: string,
@@ -319,7 +268,11 @@ class ApiDataService implements DataService {
     try {
       const formData = new FormData();
       const filename = fileUri.split('/').pop() || (mediaType === 'image' ? 'bill.jpg' : 'voice.m4a');
-      const mimeType = mediaType === 'image' ? 'image/jpeg' : 'audio/m4a';
+      const ext = (filename.split('.').pop() || '').toLowerCase();
+      const IMAGE_MIME: Record<string, string> = { png: 'image/png', webp: 'image/webp', heic: 'image/heic', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
+      const AUDIO_MIME: Record<string, string> = { m4a: 'audio/mp4', mp4: 'audio/mp4', aac: 'audio/aac', mp3: 'audio/mpeg', wav: 'audio/wav', webm: 'audio/webm', ogg: 'audio/ogg' };
+      const mimeType =
+        mediaType === 'image' ? IMAGE_MIME[ext] || 'image/jpeg' : AUDIO_MIME[ext] || 'audio/mp4';
 
       let filePayload: any = {
         uri: fileUri,
@@ -341,9 +294,14 @@ class ApiDataService implements DataService {
       formData.append('file', filePayload);
       formData.append('media_type', mediaType);
 
-      const res = await apiClient.post<ExtractionResult>('/ai/extract', formData, {
-        signal: options?.signal,
-      });
+      const res = await apiClient.post<ExtractionResult>(
+        '/ai/extract',
+        formData,
+        {
+          signal: options?.signal,
+        },
+        60000
+      );
 
       if (progressTimer) clearInterval(progressTimer);
       options?.onProgress?.(100);
@@ -357,29 +315,23 @@ class ApiDataService implements DataService {
       if (err instanceof ApiClientError) {
         throw err;
       }
-      return mockDataService.extractFromMedia(fileUri, mediaType, options);
+      throw new ApiClientError(
+        err?.message || 'Could not read the file. Please try again.',
+        'EXTRACTION_FAILED',
+        0
+      );
     }
   }
 
   async sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse> {
-    try {
-      return await apiClient.post<ChatResponse>('/ai/chat', { message, history });
-    } catch {
-      return mockDataService.sendChat(message, history);
-    }
+    return apiClient.post<ChatResponse>('/ai/chat', { message, history }, undefined, 30000);
   }
 
   async narrateReport(reportType: string, data: Record<string, unknown>): Promise<NarrationResponse> {
-    try {
-      return await apiClient.post<NarrationResponse>('/ai/narrate', {
-        report_type: reportType,
-        data,
-      });
-    } catch {
-      return {
-        narration: `Your ledger currently shows steady collections with healthy customer balances.`,
-      };
-    }
+    return apiClient.post<NarrationResponse>('/ai/narrate', {
+      report_type: reportType,
+      data,
+    }, undefined, 30000);
   }
 }
 
