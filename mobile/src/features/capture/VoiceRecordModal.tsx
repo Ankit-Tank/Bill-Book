@@ -10,6 +10,12 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  useAudioRecorder,
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 import { colors } from '../../theme/colors';
 
 export interface VoiceRecordModalProps {
@@ -27,6 +33,9 @@ export const VoiceRecordModal: React.FC<VoiceRecordModalProps> = ({
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [permissionError, setPermissionError] = useState<string | null>(null);
 
+  // Native expo-audio recorder instance
+  const nativeAudioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
   // Pulse animation for recording ring
   const [pulseAnim] = useState(() => new Animated.Value(1));
 
@@ -40,11 +49,13 @@ export const VoiceRecordModal: React.FC<VoiceRecordModalProps> = ({
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch {
-        // Ignored
+    if (Platform.OS === 'web') {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          // Ignored
+        }
       }
     }
     setIsRecording(false);
@@ -63,8 +74,17 @@ export const VoiceRecordModal: React.FC<VoiceRecordModalProps> = ({
           // Ignored
         }
       }
+      if (Platform.OS !== 'web') {
+        try {
+          if (nativeAudioRecorder?.isRecording) {
+            nativeAudioRecorder.stop();
+          }
+        } catch {
+          // Ignored
+        }
+      }
     };
-  }, []);
+  }, [nativeAudioRecorder]);
 
   // Pulse animation loop
   useEffect(() => {
@@ -136,8 +156,7 @@ export const VoiceRecordModal: React.FC<VoiceRecordModalProps> = ({
 
     // Native Recording via Expo Audio
     try {
-      const ExpoAudio = await import('expo-audio');
-      const perm = await ExpoAudio.requestRecordingPermissionsAsync();
+      const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
         setPermissionError(
           'Microphone permission is required to record voice transaction notes. Please grant microphone access in settings.'
@@ -145,21 +164,26 @@ export const VoiceRecordModal: React.FC<VoiceRecordModalProps> = ({
         return;
       }
 
-      // Start timer
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await nativeAudioRecorder.prepareToRecordAsync();
+      nativeAudioRecorder.record();
       setIsRecording(true);
+
       timerIntervalRef.current = setInterval(() => {
         setRecordSeconds((s) => s + 1);
       }, 1000);
-    } catch {
-      // Fallback timer simulation for environments without native audio hardware
-      setIsRecording(true);
-      timerIntervalRef.current = setInterval(() => {
-        setRecordSeconds((s) => s + 1);
-      }, 1000);
+    } catch (err: any) {
+      setPermissionError(
+        err?.message || 'Could not start microphone recording. Please check audio permissions.'
+      );
     }
   };
 
-  const finishRecording = () => {
+  const finishRecording = async () => {
     if (!isRecording) return;
     const finalSeconds = recordSeconds;
     stopRecordingCleanup();
@@ -173,12 +197,31 @@ export const VoiceRecordModal: React.FC<VoiceRecordModalProps> = ({
         onRecordingComplete('blob:voice-memo.mp4', finalSeconds || 2);
       }
     } else {
-      onRecordingComplete('file:///data/voice-memo.m4a', finalSeconds || 2);
+      try {
+        await nativeAudioRecorder.stop();
+        const uri = nativeAudioRecorder.uri;
+        if (uri) {
+          onRecordingComplete(uri, finalSeconds || 1);
+        } else {
+          setPermissionError('No audio recording was captured. Please try speaking again.');
+        }
+      } catch (err: any) {
+        setPermissionError('Failed to complete recording: ' + (err?.message || 'Unknown error'));
+      }
     }
   };
 
-  const cancelRecording = () => {
+  const cancelRecording = async () => {
     stopRecordingCleanup();
+    if (Platform.OS !== 'web') {
+      try {
+        if (nativeAudioRecorder?.isRecording) {
+          await nativeAudioRecorder.stop();
+        }
+      } catch {
+        // Ignored
+      }
+    }
     setRecordSeconds(0);
     onClose();
   };

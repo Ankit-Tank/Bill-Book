@@ -55,6 +55,10 @@ from backend.app.db import query_all, query_one, execute
         ("Priya Patel ke recent transactions kya hai?", "Priya Patel", "get_party_history"),
         # Q20: Supplier balance English
         ("Tell me Balaji Provisions Distributor balance", "₹3,000", "get_party_balance"),
+        # Q21-Q23: other natural phrasings of the top-debtor question
+        ("Who owes me the most?", "Rahul Sharma", "list_top_debtors"),
+        ("who owes me money", "Rahul Sharma", "list_top_debtors"),
+        ("Sabse zyada baaki kiska hai?", "Rahul Sharma", "list_top_debtors"),
     ],
 )
 def test_20_scripted_questions(client, auth_headers, question, expected_snippet, expected_tool):

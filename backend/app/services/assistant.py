@@ -29,6 +29,10 @@ from ..db import query_all, query_one, execute
 logger = logging.getLogger(__name__)
 
 
+# "Who owes me the most?", "who owes me money", "most money owed to me" and similar phrasings.
+_TOP_DEBTOR_RE = re.compile(r"\bwho\s+owes\b|\bowes?\b.*\bmost\b|\bmost\b.*\bowe[sd]?\b")
+
+
 def detect_language(text: str) -> str:
     """
     Detect whether text is predominantly English, Hindi (Devanagari), or Hinglish.
@@ -203,6 +207,10 @@ class AssistantService:
         lang: str,
     ) -> Optional[Dict[str, Any]]:
         """Execute multi-turn tool calling with Google Gemini Client."""
+        client = self.gemini_client._client
+        if client is None:
+            return None
+
         from google.genai import types
 
         # Build contents from history + current message
@@ -227,7 +235,7 @@ class AssistantService:
             temperature=0.1,
         )
 
-        response = self.gemini_client._client.models.generate_content(
+        response = client.models.generate_content(
             model=self.gemini_client.model,
             contents=contents,
             config=config,
@@ -272,10 +280,11 @@ class AssistantService:
                     )
 
                 # Add model's tool call turn and user's function response turn
-                contents.append(response.candidates[0].content)
+                if response.candidates and response.candidates[0].content:
+                    contents.append(response.candidates[0].content)
                 contents.append(types.Content(role="user", parts=tool_parts))
 
-                final_resp = self.gemini_client._client.models.generate_content(
+                final_resp = client.models.generate_content(
                     model=self.gemini_client.model,
                     contents=contents,
                     config=types.GenerateContentConfig(
@@ -307,11 +316,18 @@ class AssistantService:
         tool_calls = []
 
         # 1. Intent: Top Debtors
-        if "debtor" in lower or "debtors" in lower or any(w in lower for w in [
+        if (
+            "debtor" in lower
+            or "debtors" in lower
+            or _TOP_DEBTOR_RE.search(lower)
+            or any(w in lower for w in [
             "top debtor", "top debtors", "owes the most", "sabse zyada udhaar",
             "sabse jyada udhaar", "highest balance", "max balance", "kiska baki hai",
-            "highest outstanding", "sabse bada udhaar"
-        ]):
+            "highest outstanding", "sabse bada udhaar",
+            "sabse zyada baki", "sabse jyada baki", "sabse zyada baaki", "sabse jyada baaki",
+            "सबसे ज्यादा उधार", "सबसे ज़्यादा उधार", "सबसे ज्यादा बकाया",
+        ])
+        ):
             limit = 5
             # Extract requested limit if mentioned (e.g., top 3)
             num_match = re.search(r"\b(?:top\s+)?(\d+)\s+debtors?\b", lower) or re.search(r"\btop\s+(\d+)\b", lower)

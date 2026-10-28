@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../theme/colors';
 
+const SHOW_SAMPLE_BILL = __DEV__ && process.env.EXPO_PUBLIC_USE_MOCK !== 'false';
+
 export interface BillPickerModalProps {
   visible: boolean;
   onClose: () => void;
@@ -170,15 +172,17 @@ export const BillPickerModal: React.FC<BillPickerModalProps> = ({
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
-                {/* Mentor / Demo Sample */}
-                <TouchableOpacity
-                  style={styles.demoOptionBtn}
-                  activeOpacity={0.7}
-                  onPress={handleUseDemoSample}
-                >
-                  <Ionicons name="sparkles" size={18} color={colors.info} style={{ marginRight: 8 }} />
-                  <Text style={styles.demoOptionText}>Use Pre-Loaded Demo Bill Receipt</Text>
-                </TouchableOpacity>
+                {/* Sample receipt: only while developing against built-in sample data */}
+                {SHOW_SAMPLE_BILL ? (
+                  <TouchableOpacity
+                    style={styles.demoOptionBtn}
+                    activeOpacity={0.7}
+                    onPress={handleUseDemoSample}
+                  >
+                    <Ionicons name="sparkles" size={18} color={colors.info} style={{ marginRight: 8 }} />
+                    <Text style={styles.demoOptionText}>Try a sample bill</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               <TouchableOpacity

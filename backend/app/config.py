@@ -25,7 +25,7 @@ class Config:
 
     # Gemini config
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
     # App settings
     ENV = os.environ.get("FLASK_ENV", "development")

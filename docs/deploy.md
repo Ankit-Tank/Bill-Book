@@ -84,6 +84,7 @@ In Railway **Variables** tab:
 1. Create a project at [supabase.com](https://supabase.com).
 2. In the Supabase Dashboard, open **SQL Editor**:
    - Execute `supabase/schema.sql` to initialize tables, indexes, and `party_balances` view.
+   - The report, credit and alert views (`supabase/views.sql`) are created or refreshed automatically each time the backend starts, so you do not need to run that file by hand.
    - Execute `supabase/seed.sql` to load demo parties and transactions.
 3. In **Project Settings** > **Database**:
    - Copy the **Connection URI** (Connection pooling or Direct connection).
