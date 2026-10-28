@@ -28,7 +28,7 @@ export async function exportAndShareCSV(csvContent: string, fileNamePrefix: stri
 
   // Native (iOS & Android)
   try {
-    const FileSystem = await import('expo-file-system') as any;
+    const FileSystem = await import('expo-file-system/legacy').catch(() => import('expo-file-system')) as any;
     const Sharing = await import('expo-sharing') as any;
 
     const docDir = FileSystem.documentDirectory || FileSystem.Paths?.documentDirectory || '';
