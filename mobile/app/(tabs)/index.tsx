@@ -6,6 +6,7 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,7 +98,11 @@ export default function DashboardScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.aiIconBubble}>
-            <Ionicons name="sparkles" size={18} color={colors.primaryGreen} />
+            <Image
+              source={require('../../assets/images/logo-symbol.png')}
+              style={{ width: 22, height: 22 }}
+              resizeMode="contain"
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.aiBannerTitle}>Ask KhataAI</Text>

@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -159,6 +160,26 @@ export default function MoreScreen() {
           />
         </Card>
 
+        {/* BillBook Brand Card */}
+        <Card variant="default" style={styles.brandCard}>
+          <Image
+            source={require('../../assets/images/icon.png')}
+            style={styles.brandIcon}
+            resizeMode="contain"
+          />
+          <View style={styles.brandCardContent}>
+            <Image
+              source={require('../../assets/images/logo-horizontal-light.png')}
+              style={styles.brandLogoImg}
+              resizeMode="contain"
+            />
+            <Text style={styles.brandCardTag}>v1.0.0 • Digital Accounting Copilot</Text>
+            <Text style={styles.brandCardSub}>
+              Engineered for Indian Kirana & Small Retailers
+            </Text>
+          </View>
+        </Card>
+
         {canResetSampleData ? (
           <TouchableOpacity style={styles.devLink} onPress={resetSampleData}>
             <Text style={styles.devLinkText}>Reset sample data (development only)</Text>
@@ -279,6 +300,43 @@ const styles = StyleSheet.create({
 
   devLink: { alignSelf: 'center', marginTop: 28, padding: 8 },
   devLinkText: { fontSize: 12, color: colors.textMuted, textDecorationLine: 'underline' },
+
+  brandCard: {
+    marginTop: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  brandIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 14,
+  },
+  brandCardContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  brandLogoImg: {
+    width: 140,
+    height: 32,
+    alignSelf: 'flex-start',
+  },
+  brandCardTag: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primaryGreen,
+    marginTop: 3,
+  },
+  brandCardSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+    lineHeight: 15,
+  },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
