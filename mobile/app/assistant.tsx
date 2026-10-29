@@ -15,6 +15,7 @@ export default function AssistantScreen() {
         title="KhataAI Assistant"
         subtitle="Digital Accounting Copilot"
         showBack={true}
+        showLogo={true}
         onBack={() => router.back()}
       />
       <KhataChatView initialQuestion={params.q} />

@@ -324,7 +324,7 @@ class ApiDataService implements DataService {
   }
 
   async sendChat(message: string, history?: ChatMessage[]): Promise<ChatResponse> {
-    return apiClient.post<ChatResponse>('/ai/chat', { message, history }, undefined, 30000);
+    return apiClient.post<ChatResponse>('/ai/chat', { message, history }, undefined, 35000);
   }
 
   async narrateReport(reportType: string, data: Record<string, unknown>): Promise<NarrationResponse> {

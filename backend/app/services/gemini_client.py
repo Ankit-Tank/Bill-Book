@@ -21,11 +21,11 @@ class GeminiClient:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
-        timeout: float = 30.0,
-        max_retries: int = 2,
+        timeout: float = 15.0,
+        max_retries: int = 1,
     ):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
-        self.model = model or os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+        self.model = model or os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
         self.timeout = timeout
         self.max_retries = max_retries
 
@@ -33,9 +33,20 @@ class GeminiClient:
         if self.is_configured():
             try:
                 from google import genai
-                self._client = genai.Client(api_key=self.api_key)
+                from google.genai import types
+                http_options = types.HttpOptions(timeout=int(self.timeout * 1000))
+                self._client = genai.Client(api_key=self.api_key, http_options=http_options)
             except Exception as e:
                 logger.warning(f"Failed to initialize google.genai Client: {e}")
+
+    @property
+    def candidate_models(self) -> list:
+        """Ordered list of models to try if the primary experiences high demand (503) or timeouts."""
+        models = [self.model]
+        for m in ["gemini-3-flash-preview", "gemini-3.1-flash-lite", "gemini-3.8-flash"]:
+            if m not in models:
+                models.append(m)
+        return models
 
     def is_configured(self) -> bool:
         """Returns True if a real Gemini API key is configured."""
@@ -49,7 +60,7 @@ class GeminiClient:
     ) -> str:
         """
         Generate content from Gemini with prompt and optional media file (image or audio).
-        Applies retries with backoff.
+        Tries primary and candidate fallback models when experiencing 503 or timeouts.
         """
         if not self.is_configured() or self._client is None:
             # Deterministic fallback when live Gemini API key is not configured
@@ -66,28 +77,30 @@ class GeminiClient:
             )
         contents.append(prompt)
 
-        last_err = None
-        for attempt in range(self.max_retries + 1):
-            try:
-                config = types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.1,
-                )
-                response = self._client.models.generate_content(
-                    model=self.model,
-                    contents=contents,
-                    config=config,
-                )
-                if response and response.text:
-                    return response.text
-                raise ValueError("Empty response received from Gemini API")
-            except Exception as e:
-                last_err = e
-                logger.warning(f"Gemini API attempt {attempt + 1} failed: {e}")
-                if attempt < self.max_retries:
-                    time.sleep(1.5 * (attempt + 1))
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.1,
+        )
 
-        logger.error(f"All {self.max_retries + 1} attempts to Gemini API failed. Falling back.")
+        for candidate_model in self.candidate_models:
+            for attempt in range(self.max_retries + 1):
+                try:
+                    response = self._client.models.generate_content(
+                        model=candidate_model,
+                        contents=contents,
+                        config=config,
+                    )
+                    if response and response.text:
+                        return response.text
+                    raise ValueError("Empty response received from Gemini API")
+                except Exception as e:
+                    logger.warning(f"Gemini API model {candidate_model} attempt {attempt + 1} failed: {e}")
+                    if attempt < self.max_retries:
+                        time.sleep(1.0)
+                    else:
+                        break  # Try next candidate model
+
+        logger.error("All Gemini API candidate models failed or timed out. Falling back.")
         return self._local_fallback(prompt, media_bytes, mime_type)
 
     def _local_fallback(

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ export interface AppHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
+  showLogo?: boolean;
   onBack?: () => void;
   rightAction?: {
     icon: keyof typeof Ionicons.glyphMap;
@@ -24,6 +25,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   title,
   subtitle,
   showBack = false,
+  showLogo,
   onBack,
   rightAction,
   rightElement,
@@ -39,6 +41,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       router.back();
     }
   };
+
+  const isBrandTitle = showLogo ?? (title === 'BillBook');
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}>
@@ -58,14 +62,36 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </View>
 
         <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={1}>
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
+          {isBrandTitle ? (
+            <View style={styles.brandRow}>
+              <Image
+                source={require('../../assets/images/logo-symbol.png')}
+                style={styles.headerLogoSymbol}
+                resizeMode="contain"
+              />
+              <View style={styles.brandTextColumn}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {title}
+                </Text>
+                {subtitle ? (
+                  <Text style={styles.subtitle} numberOfLines={1}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.title} numberOfLines={1}>
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text style={styles.subtitle} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
 
         <View style={styles.rightSlot}>
@@ -124,6 +150,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  headerLogoSymbol: {
+    width: 30,
+    height: 30,
+  },
+  brandTextColumn: {
+    alignItems: 'flex-start',
+  },
   title: {
     fontSize: 18,
     fontWeight: '700',
@@ -133,8 +172,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 1,
     textAlign: 'center',
   },
   rightSlot: {

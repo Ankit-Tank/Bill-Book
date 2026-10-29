@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Animated,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -266,7 +267,11 @@ export const KhataChatView: React.FC<KhataChatViewProps> = ({ initialQuestion })
       >
         {!isUser && (
           <View style={styles.assistantAvatar}>
-            <Ionicons name="sparkles" size={14} color={colors.primaryGreen} />
+            <Image
+              source={require('../../../assets/images/logo-symbol.png')}
+              style={{ width: 18, height: 18 }}
+              resizeMode="contain"
+            />
           </View>
         )}
 
@@ -338,7 +343,11 @@ export const KhataChatView: React.FC<KhataChatViewProps> = ({ initialQuestion })
           isLoading ? (
             <View style={styles.typingRow}>
               <View style={styles.assistantAvatar}>
-                <Ionicons name="sparkles" size={14} color={colors.primaryGreen} />
+                <Image
+                  source={require('../../../assets/images/logo-symbol.png')}
+                  style={{ width: 18, height: 18 }}
+                  resizeMode="contain"
+                />
               </View>
               <View style={styles.typingBubble}>
                 <View style={styles.dotsRow}>

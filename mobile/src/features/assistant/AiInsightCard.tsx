@@ -8,6 +8,7 @@ import {
   Platform,
   StyleProp,
   ViewStyle,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -103,7 +104,11 @@ export const AiInsightCard: React.FC<AiInsightCardProps> = ({
       <View style={styles.headerRow}>
         <View style={styles.badgeWrapper}>
           <View style={styles.iconCircle}>
-            <Ionicons name="sparkles" size={14} color={colors.primaryGreen} />
+            <Image
+              source={require('../../../assets/images/logo-symbol.png')}
+              style={{ width: 15, height: 15 }}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.titleText}>{title}</Text>
           <View style={styles.aiTag}>

@@ -235,74 +235,79 @@ class AssistantService:
             temperature=0.1,
         )
 
-        response = client.models.generate_content(
-            model=self.gemini_client.model,
-            contents=contents,
-            config=config,
-        )
+        for candidate_model in self.gemini_client.candidate_models:
+            try:
+                response = client.models.generate_content(
+                    model=candidate_model,
+                    contents=contents,
+                    config=config,
+                )
 
-        if not response:
-            return None
-
-        # Check for function calls
-        executed_tool_calls = []
-        if response.function_calls:
-            for call in response.function_calls:
-                fn_name = call.name
-                fn_args = dict(call.args) if call.args else {}
-
-                # Strict allow-list enforcement
-                if fn_name not in ALLOW_LISTED_TOOLS:
-                    logger.warning("Model requested unapproved function: %s", fn_name)
+                if not response:
                     continue
 
-                fn = ALLOW_LISTED_TOOLS[fn_name]
-                try:
-                    tool_result = fn(**fn_args)
-                except Exception as ex:
-                    tool_result = {"error": str(ex)}
+                # Check for function calls
+                executed_tool_calls = []
+                if response.function_calls:
+                    for call in response.function_calls:
+                        fn_name = call.name
+                        fn_args = dict(call.args) if call.args else {}
 
-                executed_tool_calls.append({
-                    "name": fn_name,
-                    "arguments": fn_args,
-                    "result": tool_result,
-                })
+                        # Strict allow-list enforcement
+                        if fn_name not in ALLOW_LISTED_TOOLS:
+                            logger.warning("Model requested unapproved function: %s", fn_name)
+                            continue
 
-            # Send function response back to Gemini for final grounded text
-            if executed_tool_calls:
-                tool_parts = []
-                for tc in executed_tool_calls:
-                    tool_parts.append(
-                        types.Part.from_function_response(
-                            name=tc["name"],
-                            response={"result": tc["result"]},
+                        fn = ALLOW_LISTED_TOOLS[fn_name]
+                        try:
+                            tool_result = fn(**fn_args)
+                        except Exception as ex:
+                            tool_result = {"error": str(ex)}
+
+                        executed_tool_calls.append({
+                            "name": fn_name,
+                            "arguments": fn_args,
+                            "result": tool_result,
+                        })
+
+                    # Send function response back to Gemini for final grounded text
+                    if executed_tool_calls:
+                        tool_parts = []
+                        for tc in executed_tool_calls:
+                            tool_parts.append(
+                                types.Part.from_function_response(
+                                    name=tc["name"],
+                                    response={"result": tc["result"]},
+                                )
+                            )
+
+                        # Add model's tool call turn and user's function response turn
+                        if response.candidates and response.candidates[0].content:
+                            contents.append(response.candidates[0].content)
+                        contents.append(types.Content(role="user", parts=tool_parts))
+
+                        final_resp = client.models.generate_content(
+                            model=candidate_model,
+                            contents=contents,
+                            config=types.GenerateContentConfig(
+                                system_instruction=self.system_prompt,
+                                temperature=0.1,
+                            ),
                         )
-                    )
+                        if final_resp and final_resp.text:
+                            return {
+                                "reply": final_resp.text.strip(),
+                                "tool_calls": executed_tool_calls,
+                            }
 
-                # Add model's tool call turn and user's function response turn
-                if response.candidates and response.candidates[0].content:
-                    contents.append(response.candidates[0].content)
-                contents.append(types.Content(role="user", parts=tool_parts))
-
-                final_resp = client.models.generate_content(
-                    model=self.gemini_client.model,
-                    contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=self.system_prompt,
-                        temperature=0.1,
-                    ),
-                )
-                if final_resp and final_resp.text:
+                if response.text:
                     return {
-                        "reply": final_resp.text.strip(),
+                        "reply": response.text.strip(),
                         "tool_calls": executed_tool_calls,
                     }
-
-        if response.text:
-            return {
-                "reply": response.text.strip(),
-                "tool_calls": executed_tool_calls,
-            }
+            except Exception as e:
+                logger.warning("Gemini live turn failed with model %s: %s", candidate_model, e)
+                continue
 
         return None
 

@@ -19,14 +19,25 @@ logger = logging.getLogger(__name__)
 _NARRATION_CACHE: Dict[str, str] = {}
 
 
+def _normalize_data_for_cache(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Strip volatile timestamp/request keys so cache hits work reliably."""
+    cleaned = {}
+    for k, v in data.items():
+        if k in ["generated_at", "timestamp", "req_id", "now", "request_id"]:
+            continue
+        cleaned[k] = v
+    return cleaned
+
+
 def _get_cache_key(report_type: str, data: Dict[str, Any]) -> str:
     """Compute a deterministic hash key for report_type and serialized data."""
-    raw = json.dumps({"report_type": report_type, "data": data}, sort_keys=True)
+    norm_data = _normalize_data_for_cache(data)
+    raw = json.dumps({"report_type": report_type, "data": norm_data}, sort_keys=True)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 class NarrationService:
-    def __init__(self, gemini_client: Optional[GeminiClient] = None, timeout: float = 25.0):
+    def __init__(self, gemini_client: Optional[GeminiClient] = None, timeout: float = 12.0):
         self.gemini_client = gemini_client or GeminiClient(timeout=timeout)
         self.timeout = timeout
         self._prompt_template = self._load_prompt()
@@ -72,16 +83,21 @@ class NarrationService:
                     temperature=0.2,
                 )
 
-                response = client.models.generate_content(
-                    model=self.gemini_client.model,
-                    contents=[prompt],
-                    config=config,
-                )
+                for candidate_model in self.gemini_client.candidate_models:
+                    try:
+                        response = client.models.generate_content(
+                            model=candidate_model,
+                            contents=[prompt],
+                            config=config,
+                        )
 
-                if response and response.text:
-                    narration = response.text.strip()
-                    _NARRATION_CACHE[cache_key] = narration
-                    return narration
+                        if response and response.text:
+                            narration = response.text.strip()
+                            _NARRATION_CACHE[cache_key] = narration
+                            return narration
+                    except Exception as me:
+                        logger.warning("Gemini narration model %s failed: %s", candidate_model, me)
+                        continue
             except Exception as e:
                 logger.warning("Gemini live narration failed, using grounded fallback: %s", e)
 

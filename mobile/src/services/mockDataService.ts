@@ -43,431 +43,22 @@ const STORAGE_KEYS = {
   ALERTS: '@billbook_alerts_v1',
 };
 
-// Today's date in YYYY-MM-DD format
-const getTodayDate = () => {
+// Date Helpers
+function getTodayDate(): string {
   const d = new Date();
   return d.toISOString().split('T')[0];
-};
+}
 
-const getPastDate = (daysAgo: number) => {
+function getPastDate(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
   return d.toISOString().split('T')[0];
-};
+}
 
-// Initial Seed Parties (6 parties)
-const INITIAL_PARTIES: Party[] = [
-  {
-    id: 'p-1',
-    name: 'Rahul Sharma',
-    phone: '+91 98765 43210',
-    type: 'customer',
-    opening_balance: 0,
-    credit_limit: 5000000, // ₹50,000
-    due_days: 30,
-    status: 'active',
-    total_dr: 350000, // ₹3,500
-    total_cr: 200000, // ₹2,000
-    balance: 150000,  // ₹1,500 receivable
-    created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
-  },
-  {
-    id: 'p-2',
-    name: 'Priya Verma',
-    phone: '+91 98123 45678',
-    type: 'customer',
-    opening_balance: 0,
-    credit_limit: 3000000, // ₹30,000
-    due_days: 15,
-    status: 'active',
-    total_dr: 420000, // ₹4,200
-    total_cr: 100000, // ₹1,000
-    balance: 320000,  // ₹3,200 receivable
-    created_at: new Date(Date.now() - 25 * 86400000).toISOString(),
-  },
-  {
-    id: 'p-3',
-    name: 'Amit Patel',
-    phone: '+91 97234 56789',
-    type: 'customer',
-    opening_balance: 50000, // ₹500 opening
-    credit_limit: 10000000, // ₹1,00,000
-    due_days: 45,
-    status: 'active',
-    total_dr: 650000, // ₹6,500
-    total_cr: 400000, // ₹4,000
-    balance: 300000,  // ₹3,000 receivable
-    created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
-  },
-  {
-    id: 'p-4',
-    name: 'Kisan Wholesale Traders',
-    phone: '+91 98112 23344',
-    type: 'supplier',
-    opening_balance: 0,
-    credit_limit: 20000000, // ₹2,00,000
-    due_days: 15,
-    status: 'active',
-    total_dr: 0,
-    total_cr: 1200000, // ₹12,000 payment received/balance owed to them
-    balance: -1200000, // ₹12,000 payable
-    created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
-  },
-  {
-    id: 'p-5',
-    name: 'Sunita Gupta',
-    phone: '+91 99887 76655',
-    type: 'customer',
-    opening_balance: 0,
-    credit_limit: 4000000, // ₹40,000
-    due_days: 30,
-    status: 'active',
-    total_dr: 180000, // ₹1,800
-    total_cr: 180000, // ₹1,800
-    balance: 0,       // Settled
-    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
-  },
-  {
-    id: 'p-6',
-    name: 'Balaji Provisions',
-    phone: '+91 94567 89012',
-    type: 'supplier',
-    opening_balance: 0,
-    credit_limit: 15000000, // ₹1,50,000
-    due_days: 20,
-    status: 'active',
-    total_dr: 0,
-    total_cr: 800000, // ₹8,000
-    balance: -800000, // ₹8,000 payable
-    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-  },
-];
-
-// Initial Seed Transactions (20 transactions)
-const today = getTodayDate();
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  // Today's transactions
-  {
-    id: 'tx-1',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'DR',
-    amount: 150000, // ₹1,500
-    txn_date: today,
-    particulars: '2 bags basmati rice, 5L mustard oil',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-2',
-    party_id: 'p-2',
-    party_name: 'Priya Verma',
-    kind: 'DR',
-    amount: 120000, // ₹1,200
-    txn_date: today,
-    particulars: 'Organic honey and dry fruits',
-    source: 'photo',
-    bill_image_path: 'bills/sample-bill-1.jpg',
-    created_at: new Date(Date.now() - 4 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-3',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'CR',
-    amount: 100000, // ₹1,000
-    txn_date: today,
-    particulars: 'Google Pay transfer',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 1 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  // Yesterday and recent transactions
-  {
-    id: 'tx-4',
-    party_id: 'p-3',
-    party_name: 'Amit Patel',
-    kind: 'DR',
-    amount: 250000, // ₹2,500
-    txn_date: getPastDate(1),
-    particulars: 'Assorted spices and flour 20kg',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-5',
-    party_id: 'p-2',
-    party_name: 'Priya Verma',
-    kind: 'DR',
-    amount: 300000, // ₹3,000
-    txn_date: getPastDate(2),
-    particulars: 'Monthly grocery refill',
-    source: 'voice',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 48 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-6',
-    party_id: 'p-2',
-    party_name: 'Priya Verma',
-    kind: 'CR',
-    amount: 100000, // ₹1,000
-    txn_date: getPastDate(3),
-    particulars: 'Cash installment payment',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 72 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-7',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'DR',
-    amount: 200000, // ₹2,000
-    txn_date: getPastDate(4),
-    particulars: 'Tea, sugar, dairy items',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 96 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-8',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'CR',
-    amount: 100000, // ₹1,000
-    txn_date: getPastDate(5),
-    particulars: 'Paytm payment received',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 120 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-9',
-    party_id: 'p-3',
-    party_name: 'Amit Patel',
-    kind: 'CR',
-    amount: 200000, // ₹2,000
-    txn_date: getPastDate(6),
-    particulars: 'UPI payment from HDFC bank',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 144 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-10',
-    party_id: 'p-3',
-    party_name: 'Amit Patel',
-    kind: 'DR',
-    amount: 400000, // ₹4,000
-    txn_date: getPastDate(8),
-    particulars: 'Bulk pulses and refined oil',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 192 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-11',
-    party_id: 'p-3',
-    party_name: 'Amit Patel',
-    kind: 'CR',
-    amount: 200000, // ₹2,000
-    txn_date: getPastDate(10),
-    particulars: 'Cash payment on counter',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 240 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-12',
-    party_id: 'p-5',
-    party_name: 'Sunita Gupta',
-    kind: 'DR',
-    amount: 180000, // ₹1,800
-    txn_date: getPastDate(11),
-    particulars: 'Spices and snacks pack',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 264 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-13',
-    party_id: 'p-5',
-    party_name: 'Sunita Gupta',
-    kind: 'CR',
-    amount: 180000, // ₹1,800
-    txn_date: getPastDate(9),
-    particulars: 'Full bill clearance via PhonePe',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 216 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-14',
-    party_id: 'p-4',
-    party_name: 'Kisan Wholesale Traders',
-    kind: 'CR',
-    amount: 800000, // ₹8,000
-    txn_date: getPastDate(12),
-    particulars: 'Stock consignment invoice #4092',
-    source: 'photo',
-    bill_image_path: 'bills/sample-supplier-1.jpg',
-    created_at: new Date(Date.now() - 288 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-15',
-    party_id: 'p-4',
-    party_name: 'Kisan Wholesale Traders',
-    kind: 'CR',
-    amount: 400000, // ₹4,000
-    txn_date: getPastDate(14),
-    particulars: 'Additional delivery bags',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 336 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-16',
-    party_id: 'p-6',
-    party_name: 'Balaji Provisions',
-    kind: 'CR',
-    amount: 500000, // ₹5,000
-    txn_date: getPastDate(15),
-    particulars: 'Wholesale grains batch A',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 360 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-17',
-    party_id: 'p-6',
-    party_name: 'Balaji Provisions',
-    kind: 'CR',
-    amount: 300000, // ₹3,000
-    txn_date: getPastDate(17),
-    particulars: 'Soap and detergents carton',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 408 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-18',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'DR',
-    amount: 80000, // ₹800
-    txn_date: getPastDate(19),
-    particulars: 'Cooking gas & matches',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 456 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-19',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'CR',
-    amount: 80000, // ₹800
-    txn_date: getPastDate(18),
-    particulars: 'Cash payment',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 432 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-  {
-    id: 'tx-20',
-    party_id: 'p-3',
-    party_name: 'Amit Patel',
-    kind: 'DR',
-    amount: 50000, // ₹500
-    txn_date: getPastDate(20),
-    particulars: 'Emergency sugar 5kg',
-    source: 'manual',
-    bill_image_path: null,
-    created_at: new Date(Date.now() - 480 * 3600000).toISOString(),
-    deleted_at: null,
-  },
-];
-
-// Seed Alerts (5 realistic alert scenarios matching seed_demo.py)
-const INITIAL_ALERTS: Alert[] = [
-  {
-    id: 'al-1',
-    party_id: 'p-2',
-    party_name: 'Priya Verma',
-    kind: 'overdue',
-    message: 'Priya Verma has an overdue balance of ₹3,200 past due days (15 days overdue).',
-    severity: 'warning',
-    dedupe_key: 'overdue_p2',
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'al-2',
-    party_id: 'p-3',
-    party_name: 'Kavita Verma',
-    kind: 'credit_limit_exceeded',
-    message: 'Kavita Verma: Outstanding balance ₹8,500 exceeds credit limit of ₹5,000.',
-    severity: 'critical',
-    dedupe_key: 'limit_kavita',
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'al-3',
-    party_id: 'p-1',
-    party_name: 'Suresh Traders',
-    kind: 'duplicate_bill',
-    message: 'Potential duplicate entry: Two identical ₹2,500 transactions recorded within 4 hours.',
-    severity: 'warning',
-    dedupe_key: 'dupe_suresh_2500',
-    created_at: new Date(Date.now() - 14400000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'al-4',
-    party_id: 'p-5',
-    party_name: 'Anand Dairy',
-    kind: 'unusual_amount',
-    message: 'Unusual amount detected: ₹3,000 transaction is 3.5x higher than 30-day median.',
-    severity: 'info',
-    dedupe_key: 'spike_anand_3000',
-    created_at: new Date(Date.now() - 28800000).toISOString(),
-    read_at: null,
-  },
-  {
-    id: 'al-5',
-    party_id: 'p-1',
-    party_name: 'Rahul Sharma',
-    kind: 'repeat_late_payer',
-    message: 'Rahul Sharma: 3 consecutive payments settled 12+ days past agreed 7-day terms.',
-    severity: 'warning',
-    dedupe_key: 'late_rahul',
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    read_at: null,
-  },
-];
+// Initial Seed Data (Clean state for production real-use)
+const INITIAL_PARTIES: Party[] = [];
+const INITIAL_TRANSACTIONS: Transaction[] = [];
+const INITIAL_ALERTS: Alert[] = [];
 
 class MockDataService implements DataService {
   private initialized = false;
@@ -477,15 +68,25 @@ class MockDataService implements DataService {
     try {
       const partiesJson = await AsyncStorage.getItem(STORAGE_KEYS.PARTIES);
       const txsJson = await AsyncStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+      const alertsJson = await AsyncStorage.getItem(STORAGE_KEYS.ALERTS);
 
-      if (!partiesJson) {
+      let isLegacyDemo = false;
+      if (partiesJson) {
+        try {
+          const parsed = JSON.parse(partiesJson);
+          if (Array.isArray(parsed) && parsed.some((p: any) => p.id === 'p-1' && p.name === 'Rahul Sharma')) {
+            isLegacyDemo = true;
+          }
+        } catch {}
+      }
+
+      if (!partiesJson || isLegacyDemo) {
         await AsyncStorage.setItem(STORAGE_KEYS.PARTIES, JSON.stringify(INITIAL_PARTIES));
       }
-      if (!txsJson) {
+      if (!txsJson || isLegacyDemo) {
         await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(INITIAL_TRANSACTIONS));
       }
-      const alertsJson = await AsyncStorage.getItem(STORAGE_KEYS.ALERTS);
-      if (!alertsJson) {
+      if (!alertsJson || isLegacyDemo) {
         await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(INITIAL_ALERTS));
       }
       this.initialized = true;
@@ -933,16 +534,16 @@ class MockDataService implements DataService {
         const amt = dayTxs.reduce((sum, t) => sum + t.amount, 0);
         daily_breakdown.push({
           date: d,
-          amount: amt || (i % 3 === 0 ? 80000 : i % 2 === 0 ? 120000 : 50000),
-          count: dayTxs.length || 1,
+          amount: amt,
+          count: dayTxs.length,
         });
       }
 
       const report: CollectionReport = {
         start_date: startDate,
         end_date: endDate,
-        total_collected: total_collected || 3500000,
-        collections_count: collections.length || 28,
+        total_collected,
+        collections_count: collections.length,
         daily_breakdown,
       };
 
@@ -965,13 +566,18 @@ class MockDataService implements DataService {
         .slice(0, 5)
         .map((p) => ({ party_id: p.id, name: p.name, balance: p.balance }));
 
+      const sales = txs.filter((t) => t.kind === 'DR' && t.txn_date >= weekStart && t.txn_date <= weekEnd);
+      const collections = txs.filter((t) => t.kind === 'CR' && t.txn_date >= weekStart && t.txn_date <= weekEnd);
+      const sales_total = sales.reduce((sum, t) => sum + t.amount, 0);
+      const collections_total = collections.reduce((sum, t) => sum + t.amount, 0);
+
       const report: WeeklyReport = {
         week_start: weekStart,
         week_end: weekEnd,
-        sales_total: 850000, // ₹8,500
-        collections_total: 620000, // ₹6,200
-        net_change: 230000, // ₹2,300
-        sales_growth_percent: 8.5,
+        sales_total,
+        collections_total,
+        net_change: sales_total - collections_total,
+        sales_growth_percent: 0,
         top_debtors,
       };
 
@@ -1000,14 +606,19 @@ class MockDataService implements DataService {
       .slice(0, 5)
       .map((p) => ({ party_id: p.id, name: p.name, balance: p.balance }));
 
+    const monthlySales = txs.filter((t) => t.kind === 'DR' && t.txn_date.startsWith(targetMonth));
+    const monthlyCollections = txs.filter((t) => t.kind === 'CR' && t.txn_date.startsWith(targetMonth));
+    const sales_total = monthlySales.reduce((sum, t) => sum + t.amount, 0);
+    const collections_total = monthlyCollections.reduce((sum, t) => sum + t.amount, 0);
+
     const report: MonthlyReport = {
       month: targetMonth,
-      sales_total: 3500000, // ₹35,000
-      collections_total: 2900000, // ₹29,000
-      net_change: 600000, // ₹6,000
+      sales_total,
+      collections_total,
+      net_change: sales_total - collections_total,
       previous_month_comparison: {
-        sales_growth_percent: 12.0,
-        collections_growth_percent: 5.4,
+        sales_growth_percent: 0,
+        collections_growth_percent: 0,
       },
       top_debtors,
     };
