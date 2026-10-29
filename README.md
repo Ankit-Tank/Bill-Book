@@ -13,16 +13,6 @@
 
 ---
 
-## 🌐 Live Web Application (PieHost)
-
-BillBook is exported as a static progressive web application and deployed on **PieHost**:
-
-🔗 **Live Web Demo:** [https://billbook.piehost.com](https://billbook.piehost.com)
-
-> **Desktop Framing:** When accessed on desktop browsers, the interface is capped at **`480px` maximum width**, horizontally centered with a drop shadow over a deep emerald green background (`#03231B`). This simulates an authentic mobile smartphone experience on large monitors.
-
----
-
 ## 1. Project Overview & Features
 
 BillBook replaces paper bahi-khatas with an intelligent digital ledger tailored to Indian local retail merchants:
