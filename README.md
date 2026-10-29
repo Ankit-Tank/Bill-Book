@@ -8,8 +8,7 @@
 [![Expo](https://img.shields.io/badge/Expo-SDK_58-000020.svg?logo=expo)](https://expo.dev)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python)](https://python.org)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg?logo=supabase)](https://supabase.com)
-[![Gemini](https://img.shields.io/badge/AI-Google_Gemini_2.5_Flash-8E75C4.svg?logo=google)](https://ai.google.dev)
-[![Web Demo](https://img.shields.io/badge/Web_Demo-PieHost-FF6B6B.svg)](https://billbook.piehost.com)
+[![Gemini](https://img.shields.io/badge/AI-Google_Gemini_3.8_Flash-8E75C4.svg?logo=google)](https://ai.google.dev)
 
 ---
 
